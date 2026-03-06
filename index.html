@@ -264,56 +264,56 @@ const LEVELS=[
       "####################"],
  mp:[{x:60,y:235,w:70,h:10,sp:30,rng:130,ax:'x'}]},
 
+// LEVEL 10 — intro to real dark, easy layout
 {msg:"∅", dark:true,
  map:["####################",
-      "#P ^ ^ ^ ^ ^ ^ ^ ^#",
-      "####################",
-      "#^ ^ ^ ^ ^ ^ ^ ^ ^#",
-      "## # # # # # # # ##",
+      "#P                 #",
+      "#     ^       ^    #",
+      "#  ####    #####   #",
       "#                  #",
-      "###   #########  ###",
-      "#  ^           ^   #",
-      "#######    #########",
+      "#   ^         ^    #",
+      "#      ######      #",
+      "#                  #",
+      "#             G    #",
+      "####################"]},
+
+// LEVEL 11 — winding path, 3 obstacles
+{msg:"one way leads nowhere.", dark:true,
+ map:["####################",
+      "#P                 #",
+      "########           #",
+      "#          ^       #",
+      "#   ######         #",
+      "#         ^        #",
+      "#    ########      #",
+      "#              ^   #",
       "#          G       #",
       "####################"]},
 
-{msg:"one way leads nowhere.", dark:true,
- map:["####################",
-      "#P  ###   ###   ## #",
-      "#   # ^   ^ #   #  #",
-      "#   #       #   #  #",
-      "####  ###   #### ^ #",
-      "#  ^  # ^          #",
-      "#  ######  #########",
-      "#       ^       ^  #",
-      "#########  #########",
-      "#              G   #",
-      "####################"]},
-
+// LEVEL 12 — drop down maze
 {msg:"it was always meant to be you.", dark:true,
  map:["####################",
-      "#                  #",
-      "#  P    #####      #",
-      "#       #   #  ^   #",
-      "#  ######   ########",
-      "#  #            ^  #",
-      "#  #  ###  ######  #",
-      "#  #  # ^          #",
-      "#  #  #    G  #####",
-      "########    ########",
+      "#P                 #",
+      "#  ########        #",
+      "#          ^       #",
+      "######             #",
+      "#      ^    #######",
+      "#   ####           #",
+      "#       ^          #",
+      "#############  G   #",
       "####################"]},
 
+// FINAL LEVEL — worthy ending challenge
 {msg:"something is waiting.", dark:true, final:true,
  map:["####################",
-      "#P ^ ^ ^ ^ ^ ^ ^ ^#",
-      "####################",
-      "#^ ^ ^ ^ ^ ^ ^ ^ ^#",
-      "## # # # # # # # ##",
-      "#                  #",
-      "###   #########  ###",
-      "#  ^           ^   #",
+      "#P   ^        ^    #",
+      "#  ######  ######  #",
+      "#              ^   #",
+      "########   #########",
+      "#              ^   #",
+      "#   ######         #",
+      "#       ^          #",
       "#     #######      #",
-      "#  ^  #     #  ^   #",
       "#     #  G  #      #",
       "#     #######      #",
       "####################"]},
@@ -655,11 +655,17 @@ function render(){
   ctx.restore();
 
   if(LEVELS[levelIdx]&&LEVELS[levelIdx].dark){
-    const sx=P.x+P.w/2-camX,sy=P.y+P.h/2-camY;
-    const g=ctx.createRadialGradient(sx,sy,30,sx,sy,260);
-    g.addColorStop(0,T.darkOverlay+'0)');
-    g.addColorStop(0.5,T.darkOverlay+'0.2)');
-    g.addColorStop(1,T.darkOverlay+'0.75)');
+    const sx=P.x+P.w/2-camX, sy=P.y+P.h/2-camY;
+    // Level 7=wide&soft, shrinks and sharpens each level
+    const dl = Math.max(0, levelIdx - 6); // 0 at level7, grows each dark level
+    const innerR = Math.max(18,  40  - dl * 3);   // bright center shrinks
+    const outerR = Math.max(70,  220 - dl * 20);  // flashlight edge shrinks
+    const edgeAlpha = Math.min(0.96, 0.60 + dl * 0.06);
+    const g = ctx.createRadialGradient(sx,sy,innerR,sx,sy,outerR);
+    g.addColorStop(0,   T.darkOverlay+'0)');
+    g.addColorStop(0.6, T.darkOverlay+'0.15)');
+    g.addColorStop(0.85,T.darkOverlay+'0.65)');
+    g.addColorStop(1,   T.darkOverlay+edgeAlpha+')');
     ctx.fillStyle=g; ctx.fillRect(0,0,CW,CH);
   }
 
