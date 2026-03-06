@@ -22,6 +22,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 .t-credit{position:absolute;bottom:18px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#252525;letter-spacing:.2em;}
 #hud{position:fixed;top:0;left:0;width:100%;padding:10px 14px;display:flex;justify-content:space-between;z-index:10;pointer-events:none;}
 #hud span{font-family:'Share Tech Mono',monospace;font-size:11px;color:#383838;letter-spacing:.2em;}
+#restartBtn{font-family:'Share Tech Mono',monospace;font-size:13px;color:#444;background:rgba(255,255,255,0.05);border:1px solid #2a2a2a;border-radius:6px;padding:5px 10px;cursor:pointer;letter-spacing:.1em;transition:.2s;}
+#restartBtn:active{color:#aaa;border-color:#666;background:rgba(255,255,255,0.12);}
 #msgWrap{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:9;pointer-events:none;}
 #msgTxt{font-family:'Crimson Pro',serif;font-style:italic;font-size:clamp(14px,4vw,19px);color:#484848;text-align:center;padding:0 36px;line-height:1.7;opacity:0;transition:opacity 1.4s;max-width:340px;}
 #msgTxt.show{opacity:1;}
@@ -76,6 +78,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 <div id="hud">
   <span id="lblLevel">LEVEL 1</span>
   <span id="lblDeaths">DEATHS: 0</span>
+  <button id="restartBtn">↺</button>
 </div>
 <div id="msgWrap"><div id="msgTxt"></div></div>
 
@@ -573,6 +576,14 @@ function showEnding(){
     d+=ln===' '?300:700;
   });
 }
+
+document.getElementById('restartBtn').addEventListener('click',()=>{
+  document.getElementById('deathScreen').classList.add('hidden');
+  isDead=false;
+  deaths++;
+  document.getElementById('lblDeaths').textContent=`DEATHS: ${deaths}`;
+  loadLevel(levelIdx);
+});
 
 document.getElementById('startBtn').addEventListener('click',()=>{
   document.getElementById('titleScreen').classList.add('hidden');
