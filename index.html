@@ -5,972 +5,590 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<title>∅ — UNKNOWN</title>
+<title>UNKNOWN</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Crimson+Pro:ital,wght@0,300;1,300;1,400&display=swap');
-
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;}
-  html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;}
-
-  #gameCanvas{display:block;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);image-rendering:pixelated;}
-
-  /* UI Overlays */
-  .screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;}
-  .screen.hidden{display:none;}
-
-  /* Title Screen */
-  #titleScreen{background:#000;}
-  .title-glitch{font-family:'Share Tech Mono',monospace;font-size:clamp(28px,8vw,52px);color:#e8e8e8;letter-spacing:0.3em;text-transform:uppercase;position:relative;animation:glitch 4s infinite;}
-  .title-sub{font-family:'Share Tech Mono',monospace;font-size:clamp(10px,3vw,14px);color:#444;letter-spacing:0.5em;margin-top:16px;text-transform:uppercase;}
-  .title-hint{font-family:'Crimson Pro',serif;font-style:italic;font-size:clamp(12px,3.5vw,16px);color:#333;margin-top:40px;letter-spacing:0.1em;}
-  .start-btn{margin-top:60px;font-family:'Share Tech Mono',monospace;font-size:clamp(12px,3vw,15px);color:#888;border:1px solid #333;padding:14px 40px;letter-spacing:0.3em;cursor:pointer;text-transform:uppercase;background:transparent;transition:all 0.3s;position:relative;overflow:hidden;}
-  .start-btn:hover,.start-btn:active{color:#ccc;border-color:#666;}
-  .title-noise{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0.03;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");}
-  .scan-line{position:absolute;top:0;left:0;width:100%;height:100%;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.15) 2px,rgba(0,0,0,0.15) 4px);pointer-events:none;}
-
-  /* HUD */
-  #hud{position:absolute;top:0;left:0;width:100%;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;z-index:5;pointer-events:none;}
-  #levelLabel{font-family:'Share Tech Mono',monospace;font-size:12px;color:#444;letter-spacing:0.2em;}
-  #deathLabel{font-family:'Share Tech Mono',monospace;font-size:11px;color:#2a2a2a;letter-spacing:0.15em;}
-
-  /* Message overlay */
-  #msgOverlay{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:8;pointer-events:none;}
-  #msgBox{font-family:'Crimson Pro',serif;font-style:italic;font-size:clamp(14px,4vw,20px);color:#555;text-align:center;padding:0 40px;line-height:1.6;opacity:0;transition:opacity 1.5s;max-width:400px;}
-  #msgBox.show{opacity:1;}
-
-  /* Death screen */
-  #deathScreen{background:rgba(0,0,0,0.92);z-index:12;}
-  .death-title{font-family:'Share Tech Mono',monospace;font-size:clamp(20px,6vw,32px);color:#1a1a1a;letter-spacing:0.4em;text-transform:uppercase;}
-  .death-sub{font-family:'Share Tech Mono',monospace;font-size:clamp(10px,2.5vw,13px);color:#2a2a2a;margin-top:20px;letter-spacing:0.3em;}
-  .retry-btn{margin-top:50px;font-family:'Share Tech Mono',monospace;font-size:clamp(11px,3vw,14px);color:#555;border:1px solid #222;padding:12px 36px;letter-spacing:0.3em;cursor:pointer;background:transparent;text-transform:uppercase;transition:all 0.3s;}
-  .retry-btn:hover,.retry-btn:active{color:#999;border-color:#555;}
-
-  /* Ending screen */
-  #endScreen{background:#000;z-index:15;padding:30px;}
-  .end-fade{animation:fadeInSlow 3s forwards;}
-  .end-letter{font-family:'Crimson Pro',serif;font-style:italic;font-weight:300;font-size:clamp(15px,4.5vw,22px);color:#888;text-align:center;line-height:1.9;max-width:380px;opacity:0;animation:letterReveal 2s forwards 1s;}
-  .end-heart{font-size:clamp(20px,6vw,32px);opacity:0;animation:letterReveal 2s forwards 6s;display:block;text-align:center;margin-top:30px;color:#555;}
-  .end-name{font-family:'Share Tech Mono',monospace;font-size:clamp(10px,3vw,13px);color:#333;letter-spacing:0.4em;opacity:0;animation:letterReveal 2s forwards 8s;display:block;text-align:center;margin-top:24px;}
-
-  /* Controls */
-  #controls{position:absolute;bottom:0;left:0;width:100%;padding:16px 20px 24px;display:flex;justify-content:space-between;align-items:flex-end;z-index:5;}
-  #moveButtons{display:flex;gap:10px;}
-  .move-btn{width:68px;height:68px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;color:rgba(255,255,255,0.4);cursor:pointer;transition:background 0.1s;pointer-events:all;}
-  .move-btn:active{background:rgba(255,255,255,0.18);}
-  .jump-btn{width:90px;height:90px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Share Tech Mono',monospace;font-size:13px;color:rgba(255,255,255,0.5);cursor:pointer;letter-spacing:0.1em;transition:background 0.1s;pointer-events:all;}
-  .jump-btn:active{background:rgba(255,255,255,0.2);}
-
-  @keyframes glitch{
-    0%,90%,100%{text-shadow:none;transform:none;}
-    91%{text-shadow:-2px 0 #f00,2px 0 #0ff;transform:skewX(-1deg);}
-    92%{text-shadow:2px 0 #f00,-2px 0 #0ff;transform:skewX(1deg);}
-    93%{text-shadow:none;transform:none;}
-    96%{text-shadow:-1px 0 #f00,1px 0 #0ff;}
-    97%{text-shadow:none;}
-  }
-  @keyframes fadeInSlow{from{opacity:0;}to{opacity:1;}}
-  @keyframes letterReveal{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
-  @keyframes pulse{0%,100%{opacity:0.5;}50%{opacity:1;}}
-  @keyframes flicker{0%,98%,100%{opacity:1;}99%{opacity:0.3;}}
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Crimson+Pro:ital,wght@0,300;1,300;1,400&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;}
+.screen{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20;}
+.screen.hidden{display:none!important;}
+#titleScreen{background:#000;}
+.scan-line{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.12) 2px,rgba(0,0,0,0.12) 4px);pointer-events:none;}
+.t-logo{font-family:'Share Tech Mono',monospace;font-size:clamp(30px,9vw,56px);color:#ddd;letter-spacing:.35em;animation:glitch 5s infinite;}
+.t-sub{font-family:'Share Tech Mono',monospace;font-size:clamp(9px,2.5vw,13px);color:#3a3a3a;letter-spacing:.5em;margin-top:14px;text-transform:uppercase;}
+.t-hint{font-family:'Crimson Pro',serif;font-style:italic;font-size:clamp(13px,3.5vw,17px);color:#2d2d2d;margin-top:36px;}
+.t-start{margin-top:56px;font-family:'Share Tech Mono',monospace;font-size:clamp(12px,3vw,15px);color:#666;border:1px solid #2a2a2a;padding:14px 44px;letter-spacing:.35em;background:transparent;cursor:pointer;transition:.3s;}
+.t-start:active{color:#bbb;border-color:#666;}
+.t-credit{position:absolute;bottom:18px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#252525;letter-spacing:.2em;}
+#hud{position:fixed;top:0;left:0;width:100%;padding:10px 14px;display:flex;justify-content:space-between;z-index:10;pointer-events:none;}
+#hud span{font-family:'Share Tech Mono',monospace;font-size:11px;color:#383838;letter-spacing:.2em;}
+#msgWrap{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:9;pointer-events:none;}
+#msgTxt{font-family:'Crimson Pro',serif;font-style:italic;font-size:clamp(14px,4vw,19px);color:#484848;text-align:center;padding:0 36px;line-height:1.7;opacity:0;transition:opacity 1.4s;max-width:340px;}
+#msgTxt.show{opacity:1;}
+#deathScreen{background:rgba(0,0,0,0.94);z-index:22;}
+.d-title{font-family:'Share Tech Mono',monospace;font-size:clamp(22px,7vw,36px);color:#1c1c1c;letter-spacing:.4em;}
+.d-sub{font-family:'Share Tech Mono',monospace;font-size:clamp(10px,2.5vw,12px);color:#252525;margin-top:18px;letter-spacing:.25em;text-align:center;padding:0 30px;}
+.d-retry{margin-top:48px;font-family:'Share Tech Mono',monospace;font-size:clamp(11px,3vw,14px);color:#505050;border:1px solid #1e1e1e;padding:12px 38px;letter-spacing:.3em;background:transparent;cursor:pointer;transition:.3s;}
+.d-retry:active{color:#aaa;border-color:#555;}
+#endScreen{background:#000;z-index:25;padding:28px;overflow-y:auto;}
+#endLetter{font-family:'Crimson Pro',serif;font-style:italic;font-weight:300;font-size:clamp(15px,4.5vw,21px);color:#777;text-align:center;line-height:2;max-width:360px;white-space:pre-line;opacity:0;animation:revealUp 2s forwards 1s;}
+#endHeart{font-size:clamp(22px,6vw,34px);opacity:0;animation:revealUp 2s forwards 7s;display:block;text-align:center;margin-top:28px;color:#555;}
+#endCredit{font-family:'Share Tech Mono',monospace;font-size:10px;color:#222;letter-spacing:.3em;opacity:0;animation:revealUp 2s forwards 9s;display:block;text-align:center;margin-top:20px;}
+#gameCanvas{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);display:block;image-rendering:pixelated;}
+#ctrlBar{position:fixed;bottom:0;left:0;width:100%;padding:14px 18px 28px;display:flex;justify-content:space-between;align-items:flex-end;z-index:11;}
+.lr-wrap{display:flex;gap:10px;}
+.btn-lr{width:74px;height:74px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:28px;color:rgba(255,255,255,0.35);cursor:pointer;-webkit-touch-callout:none;transition:background .1s;}
+.btn-lr.pressed,.btn-lr:active{background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.8);}
+#btnJump{width:90px;height:90px;background:rgba(255,255,255,0.06);border:2px solid rgba(255,255,255,0.18);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;cursor:pointer;-webkit-touch-callout:none;transition:background .1s;}
+#btnJump .j-arrow{font-size:24px;color:rgba(255,255,255,0.5);line-height:1;}
+#btnJump .j-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(255,255,255,0.25);letter-spacing:.15em;}
+#btnJump.pressed,#btnJump:active{background:rgba(255,255,255,0.2);border-color:rgba(255,255,255,0.45);}
+#btnJump.pressed .j-arrow{color:rgba(255,255,255,0.9);}
+@keyframes glitch{0%,88%,100%{text-shadow:none;transform:none;}89%{text-shadow:-2px 0 #f00,2px 0 #0ff;transform:skewX(-1deg);}90%{text-shadow:2px 0 #f00,-2px 0 #0ff;transform:skewX(1deg);}91%{text-shadow:none;transform:none;}95%{text-shadow:-1px 0 #f00,1px 0 #0ff;}96%{text-shadow:none;}}
+@keyframes revealUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 </style>
 </head>
 <body>
 
-<!-- Title Screen -->
 <div id="titleScreen" class="screen">
   <div class="scan-line"></div>
-  <div class="title-noise"></div>
-  <div class="title-glitch">∅ UNKNOWN</div>
-  <div class="title-sub">Subject [REDACTED] — Protocol 7</div>
-  <div class="title-hint">something is waiting at the end</div>
-  <button class="start-btn" id="startBtn">[ ENTER ]</button>
+  <div class="t-logo">∅ UNKNOWN</div>
+  <div class="t-sub">Subject [REDACTED] — Protocol 7</div>
+  <div class="t-hint">something is waiting at the end</div>
+  <button class="t-start" id="startBtn">[ ENTER ]</button>
+  <div class="t-credit">© 2026 vibe coding — NLBNxAI</div>
 </div>
 
-<!-- Death Screen -->
 <div id="deathScreen" class="screen hidden">
-  <div class="death-title">TERMINATED</div>
-  <div class="death-sub" id="deathMsg">You were never meant to reach the end.</div>
-  <button class="retry-btn" id="retryBtn">[ TRY AGAIN ]</button>
+  <div class="d-title">TERMINATED</div>
+  <div class="d-sub" id="deathMsg">You were never meant to reach the end.</div>
+  <button class="d-retry" id="retryBtn">[ TRY AGAIN ]</button>
 </div>
 
-<!-- End Screen -->
 <div id="endScreen" class="screen hidden">
-  <div class="end-letter" id="endLetter"></div>
-  <span class="end-heart" id="endHeart">♡</span>
-  <span class="end-name" id="endName"></span>
+  <div id="endLetter"></div>
+  <span id="endHeart">♡</span>
+  <span id="endCredit">© 2026 vibe coding — NLBNxAI</span>
 </div>
 
-<!-- Game Canvas -->
 <canvas id="gameCanvas"></canvas>
 
-<!-- HUD -->
 <div id="hud">
-  <div id="levelLabel">LVL —</div>
-  <div id="deathLabel">DEATHS: 0</div>
+  <span id="lblLevel">LEVEL 1</span>
+  <span id="lblDeaths">DEATHS: 0</span>
 </div>
+<div id="msgWrap"><div id="msgTxt"></div></div>
 
-<!-- Cryptic message overlay -->
-<div id="msgOverlay"><div id="msgBox"></div></div>
-
-<!-- Controls -->
-<div id="controls">
-  <div id="moveButtons">
-    <div class="move-btn" id="btnLeft">◀</div>
-    <div class="move-btn" id="btnRight">▶</div>
+<div id="ctrlBar">
+  <div class="lr-wrap">
+    <div class="btn-lr" id="btnLeft">◀</div>
+    <div class="btn-lr" id="btnRight">▶</div>
   </div>
-  <div class="jump-btn" id="btnUp">JUMP</div>
+  <div id="btnJump">
+    <span class="j-arrow">▲</span>
+    <span class="j-label">JUMP</span>
+  </div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════
-//  UNKNOWN — A Mystery Puzzle Game
-// ═══════════════════════════════════════════════════
-
 const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+const ctx    = canvas.getContext('2d');
+const CW=320, CH=480, TS=20;
 
-// ── Responsive sizing ──
 function resize(){
-  const W = window.innerWidth, H = window.innerHeight;
-  const scale = Math.min(W/320, H/540);
-  canvas.width = 320; canvas.height = 540;
-  canvas.style.width = (320*scale)+'px';
-  canvas.style.height = (540*scale)+'px';
+  const s=Math.min(window.innerWidth/CW, window.innerHeight/CH);
+  canvas.width=CW; canvas.height=CH;
+  canvas.style.width=Math.floor(CW*s)+'px';
+  canvas.style.height=Math.floor(CH*s)+'px';
 }
 resize();
-window.addEventListener('resize', resize);
+window.addEventListener('resize',resize);
 
-// ── Game State ──
-const G = {
-  level:0, deaths:0, running:false, dead:false,
-  player:{x:0,y:0,vx:0,vy:0,w:12,h:14,onGround:false,color:'#ccc'},
-  keys:{left:false,right:false,up:false,down:false},
-  camera:{x:0,y:0},
-  particles:[],
-  triggers:[],
-  msgTimer:0,
-  levelTime:0,
-  glitchTimer:0,
-  tileSize:20,
-};
+// ── State
+const KEY={left:false,right:false};
+let doJump=false, deaths=0, levelIdx=0;
+let gameRunning=false, isDead=false;
+let msgTimer=null, glitchT=0, lastTS=0;
 
-// ── Cryptic messages ──
-const MESSAGES = [
-  "you are being observed.",
-  "not everything is what it seems.",
-  "keep going.",
-  "you're closer than you think.",
-  "why are you still here?",
-  "something remembers you.",
-  "the path was chosen before you arrived.",
-  "almost.",
-  "∅",
-  "do you feel it?",
-  "it was always meant to be you.",
+// ── Player
+const P={x:0,y:0,vx:0,vy:0,w:12,h:14,onGround:false};
+
+// ── Level data
+let MAP=[], mapRows=0, mapCols=0;
+let goalR=0, goalC=0;
+let fakeTiles={};
+let mPlats=[];
+let particles=[];
+let camX=0, camY=0;
+
+const FAKE_MS=600;
+const GRAVITY=900, JUMP_V=-355, WALK=112, FRIC=0.70;
+
+const CRYPTIC=["you are being observed.","not everything is what it seems.","keep going.","you're closer than you think.","why are you still here?","something remembers you.","the path was chosen before you arrived.","almost.","∅","do you feel it?","it was always meant to be you."];
+const DEAD_MSG=["You were never meant to reach the end.","The path rejects you.","Try again. Or don't.","Nothing persists here.","Almost... but not yet.","The floor remembers.","You fell for it.","Again.","Pain is part of the design."];
+
+// ── Levels
+// tiles: #=wall space=air ^=spike G=goal F=fake P=spawn
+const LEVELS=[
+{msg:"find the door.", dark:false,
+ map:["####################",
+      "#                  #",
+      "#  P               #",
+      "#                  #",
+      "######    ##########",
+      "#                  #",
+      "#                  #",
+      "#     ######       #",
+      "#                  #",
+      "#                G #",
+      "####################"]},
+
+{msg:"not every step is safe.", dark:false,
+ map:["####################",
+      "#                  #",
+      "# P                #",
+      "######   ###########",
+      "#    ^             #",
+      "#  ######    ##### #",
+      "#                  #",
+      "#          ######  #",
+      "#                G #",
+      "####################"]},
+
+{msg:"walls remember your touch.", dark:false,
+ map:["####################",
+      "#P                 #",
+      "###    ^   ^   ^   #",
+      "#    ########      #",
+      "#    #      #  ^   #",
+      "#    #      ########",
+      "#    #             #",
+      "#    #  G  ########",
+      "#    ########      #",
+      "####################"]},
+
+{msg:"you're closer than you think.", dark:false,
+ map:["####################",
+      "#                  #",
+      "# P                #",
+      "#######  FFFF  #####",
+      "#      ^            ",
+      "########  ##########",
+      "#       ^          #",
+      "#  ######  ########",
+      "#              G   #",
+      "####################"]},
+
+{msg:"timing is everything.", dark:false,
+ map:["####################",
+      "#P                 #",
+      "###                #",
+      "#   ^   ^   ^   ^  #",
+      "####################",
+      "#                  #",
+      "#                  #",
+      "#              G   #",
+      "####################"],
+ mp:[{x:60,y:180,w:56,h:10,sp:45,rng:120,ax:'x'}]},
+
+{msg:"something is watching.", dark:false,
+ map:["####################",
+      "#P    #    #       #",
+      "#     #    #  ##   #",
+      "## ####    ####    #",
+      "#      ^   ^       #",
+      "#  #####   #########",
+      "#      ^           #",
+      "######    ##########",
+      "#              G   #",
+      "####################"]},
+
+{msg:"do you feel it?", dark:true,
+ map:["####################",
+      "#P                 #",
+      "#  ##    ##   ##   #",
+      "#   # ^  #  ^ #    #",
+      "#   #    #    # ## #",
+      "#   #####     ####  ",
+      "#              ^   #",
+      "#######    #########",
+      "#              G   #",
+      "####################"]},
+
+{msg:"why are you still here?", dark:true,
+ map:["####################",
+      "#P  #    #    #    #",
+      "#   #    #    #    #",
+      "# ###  ###  ###    #",
+      "#   ^       ^      #",
+      "####  ##########  ##",
+      "#  ^  ^  ^  ^  ^  #",
+      "##   ###########  ##",
+      "#              G   #",
+      "####################"]},
+
+{msg:"almost.", dark:true,
+ map:["####################",
+      "#P                 #",
+      "##                 #",
+      "#    ^   ^   ^     #",
+      "####################",
+      "#                  #",
+      "#    ^   ^   ^     #",
+      "#############  #####",
+      "#              G   #",
+      "####################"],
+ mp:[{x:60,y:200,w:50,h:10,sp:40,rng:100,ax:'x'},{x:160,y:280,w:50,h:10,sp:50,rng:80,ax:'x'}]},
+
+{msg:"∅", dark:true,
+ map:["####################",
+      "#P ^ ^ ^ ^ ^ ^ ^ ^#",
+      "####################",
+      "#^ ^ ^ ^ ^ ^ ^ ^ ^#",
+      "## # # # # # # # ##",
+      "#                  #",
+      "###   #########  ###",
+      "#  ^           ^   #",
+      "#######    #########",
+      "#          G       #",
+      "####################"]},
+
+{msg:"one way leads nowhere.", dark:true,
+ map:["####################",
+      "#P  ###   ###   ## #",
+      "#   # ^   ^ #   #  #",
+      "#   #       #   #  #",
+      "####  ###   #### ^ #",
+      "#  ^  # ^          #",
+      "#  ######  #########",
+      "#       ^       ^  #",
+      "#########  #########",
+      "#              G   #",
+      "####################"]},
+
+{msg:"it was always meant to be you.", dark:true,
+ map:["####################",
+      "#                  #",
+      "#  P    #####      #",
+      "#       #   #  ^   #",
+      "#  ######   ########",
+      "#  #            ^  #",
+      "#  #  ###  ######  #",
+      "#  #  # ^          #",
+      "#  #  #    G  #####",
+      "########    ########",
+      "####################"]},
+
+{msg:"something is waiting.", dark:true, final:true,
+ map:["####################",
+      "#P ^ ^ ^ ^ ^ ^ ^ ^#",
+      "####################",
+      "#^ ^ ^ ^ ^ ^ ^ ^ ^#",
+      "## # # # # # # # ##",
+      "#                  #",
+      "###   #########  ###",
+      "#  ^           ^   #",
+      "#     #######      #",
+      "#  ^  #     #  ^   #",
+      "#     #  G  #      #",
+      "#     #######      #",
+      "####################"]},
 ];
 
-// ── Death messages ──
-const DEATH_MSGS = [
-  "You were never meant to reach the end.",
-  "The path rejects you.",
-  "Try again. Or don't.",
-  "Nothing persists.",
-  "Almost... but not yet.",
-  "The floor remembers.",
-  "You fell for it.",
-  "Again.",
-  "Pain is part of the design.",
-];
-
-// ── Level definitions (tile map) ──
-// 0=air, 1=wall/floor, 2=spike, 3=goal, 4=false-floor(disappears), 5=message trigger, 6=moving platform marker, 7=darkness zone, 8=teleport
-const TILE = {AIR:0,WALL:1,SPIKE:2,GOAL:3,FAKE:4,MSG:5,DARK:7,WRAP:8};
-const TS = G.tileSize;
-
-// Each level: {map: string[], spawn:[col,row], msg:string, platforms:[], darkMode:bool, scrollX:bool}
-const LEVELS = [
-
-// LEVEL 1 — Introduction
-{msg:"find the door.", darkMode:false,
- map:[
-  "####################",
-  "#                  #",
-  "#                  #",
-  "#      P           #",
-  "###################",
-  "#                  #",
-  "#                  #",
-  "#     ....         #",
-  "##########    #####",
-  "#              G   #",
-  "####################",
- ]},
-
-// LEVEL 2 — Spikes intro
-{msg:"not every floor is safe.", darkMode:false,
- map:[
-  "####################",
-  "#                  #",
-  "#   P              #",
-  "###################",
-  "#     ^  ^         #",
-  "#  #######   ####  #",
-  "#               G  #",
-  "####################",
- ]},
-
-// LEVEL 3 — Wall jump hint
-{msg:"walls remember your touch.", darkMode:false,
- map:[
-  "####################",
-  "#P                 #",
-  "##                 #",
-  " #      ####       #",
-  " #    ^ ####  ^    #",
-  " ###########  #####",
-  "            #      ",
-  "            #  G   ",
-  "            ########",
- ]},
-
-// LEVEL 4 — Fake floors
-{msg:"you're closer than you think.", darkMode:false,
- map:[
-  "####################",
-  "#                  #",
-  "# P                #",
-  "####  FFFF  ########",
-  "#      ^           #",
-  "####  ########  ####",
-  "#      ^  ^        #",
-  "########   #########",
-  "#              G   #",
-  "####################",
- ]},
-
-// LEVEL 5 — Misleading path
-{msg:"the obvious way is wrong.", darkMode:false,
- map:[
-  "####################",
-  "#P    ######       #",
-  "#     #  ^ #  ###  #",
-  "####  #    #  #    #",
-  "#  #  ######  # ^  #",
-  "#  #          #    #",
-  "#  ############    #",
-  "#         ^    G   #",
-  "####################",
- ]},
-
-// LEVEL 6 — narrow passages
-{msg:"something is watching.", darkMode:false,
- map:[
-  "####################",
-  "#P                 #",
-  "## ############## ##",
-  "#                  #",
-  "## ## ## ## ## ## ##",
-  "#  ^  ^  ^  ^  ^  #",
-  "## ############## ##",
-  "#              G   #",
-  "####################",
- ]},
-
-// LEVEL 7 — darkness begins
-{msg:"do you feel it?", darkMode:true,
- map:[
-  "####################",
-  "#P                 #",
-  "#  ##   ##   ##    #",
-  "#   # ^ #  ^ #     #",
-  "#   #   #    #  ## #",
-  "#   #####    ####  #",
-  "#              ^   #",
-  "#######    #########",
-  "#              G   #",
-  "####################",
- ]},
-
-// LEVEL 8 — maze
-{msg:"why are you still here?", darkMode:true,
- map:[
-  "####################",
-  "#P  #    #    #    #",
-  "#   #    #    #    #",
-  "# ###  ###  ###    #",
-  "#          ^       #",
-  "####  #########  ###",
-  "#  ^  ^  ^  ^  ^  #",
-  "##  ############  ##",
-  "#              G   #",
-  "####################",
- ]},
-
-// LEVEL 9 — timing (moving platforms simulated with platforms array)
-{msg:"timing is everything.", darkMode:false,
- map:[
-  "####################",
-  "#P                 #",
-  "#                  #",
-  "##                 #",
-  "                   #",
-  "                   #",
-  "                ^  #",
-  "#########       ####",
-  "#      ^           #",
-  "#############  G####",
-  "####################",
- ],
- platforms:[
-   {x:60,y:200,w:60,h:10,speed:40,range:120,axis:'x',t:0},
-   {x:160,y:280,w:50,h:10,speed:50,range:80,axis:'x',t:1},
- ]},
-
-// LEVEL 10 — heavy spikes
-{msg:"almost.", darkMode:true,
- map:[
-  "####################",
-  "#P  ^  ^  ^  ^  ^  ",
-  "####################",
-  "       ^   ^   ^   #",
-  "################   #",
-  "#  ^  ^  ^  ^      #",
-  "#  #################",
-  "#              ^   #",
-  "#######    #########",
-  "#          G       #",
-  "####################",
- ]},
-
-// LEVEL 11 — wrap-around illusion
-{msg:"the path was chosen before you arrived.", darkMode:true,
- map:[
-  "####################",
-  "#P                 #",
-  "####  ####  ####  ##",
-  "#  ^  ^  ^  ^  ^  #",
-  "##  ############  ##",
-  "#                  #",
-  "##  ##  ##  ##  ## #",
-  "#    ^  ^  ^  ^    #",
-  "####################",
-  "#              G   #",
-  "####################",
- ]},
-
-// LEVEL 12 — very dark, minimal spikes, complex shape
-{msg:"it was always meant to be you.", darkMode:true,
- map:[
-  "####################",
-  "#                  #",
-  "#  P    #####      #",
-  "#       #   #  ^   #",
-  "#  ######   ########",
-  "#  #            ^  #",
-  "#  #  ###  ######  #",
-  "#  #  # ^         #",
-  "#  #  #    G  #####",
-  "########    ########",
-  "####################",
- ]},
-
-// LEVEL 13 — inverted gravity section (just visual trick, harder layout)
-{msg:"∅", darkMode:true,
- map:[
-  "####################",
-  "#              P   #",
-  "#  ######  ######  #",
-  "#  #    ^  ^    #  #",
-  "#  #  ########  #  #",
-  "#  #            #  #",
-  "#  ###  ####  ###  #",
-  "#    ^  ^  ^  ^    #",
-  "########  ##########",
-  "#              G   #",
-  "####################",
- ]},
-
-// LEVEL 14 — multi-path confusion
-{msg:"one way leads nowhere.", darkMode:true,
- map:[
-  "####################",
-  "#P  ###   ###   ## #",
-  "#   # ^   ^ #   #  #",
-  "#   #       #   #  #",
-  "####   ###  #### ^ #",
-  "#  ^   # ^         #",
-  "#  ######  #########",
-  "#       ^       ^  #",
-  "#########  #########",
-  "#              G   #",
-  "####################",
- ]},
-
-// FINAL LEVEL — The truth
-{msg:"something is waiting.", darkMode:true, isFinal:true,
- map:[
-  "####################",
-  "#P ^ ^ ^ ^ ^ ^ ^ ^#",
-  "####################",
-  "#^ ^ ^ ^ ^ ^ ^ ^ ^#",
-  "## # # # # # # # ##",
-  "#              ^   #",
-  "###   #########  ###",
-  "#  ^           ^   #",
-  "#     #######      #",
-  "#  ^  #     #  ^   #",
-  "#     #  G  #      #",
-  "#     #######      #",
-  "####################",
- ]},
-];
-
-// ── Parse level map ──
-function parseLevel(lvl){
-  const map = lvl.map;
-  const rows = map.length;
-  const cols = Math.max(...map.map(r=>r.length));
-  const tiles = [];
-  let spawnX=0, spawnY=0, goalX=0, goalY=0;
-
-  for(let r=0;r<rows;r++){
-    tiles[r]=[];
-    for(let c=0;c<cols;c++){
-      const ch = map[r]?.[c] ?? ' ';
-      if(ch==='P'){spawnX=c*TS+4; spawnY=r*TS; tiles[r][c]=TILE.AIR;}
-      else if(ch==='G'){goalX=c*TS; goalY=r*TS; tiles[r][c]=TILE.GOAL;}
-      else if(ch==='#'){tiles[r][c]=TILE.WALL;}
-      else if(ch==='^'){tiles[r][c]=TILE.SPIKE;}
-      else if(ch==='F'){tiles[r][c]=TILE.FAKE;}
-      else if(ch==='.'){tiles[r][c]=TILE.MSG;}
-      else{tiles[r][c]=TILE.AIR;}
+function parseLevel(idx){
+  const lvl=LEVELS[idx];
+  const rows=lvl.map;
+  mapRows=rows.length;
+  mapCols=Math.max(...rows.map(r=>r.length));
+  MAP=[]; fakeTiles={}; mPlats=[];
+  let sx=40,sy=20;
+  for(let r=0;r<mapRows;r++){
+    MAP[r]=[];
+    for(let c=0;c<mapCols;c++){
+      const ch=rows[r]?.[c]??'';
+      if(ch==='#'){MAP[r][c]='W';}
+      else if(ch==='^'){MAP[r][c]='S';}
+      else if(ch==='G'){MAP[r][c]='G';goalR=r;goalC=c;}
+      else if(ch==='F'){MAP[r][c]='F';}
+      else if(ch==='P'){MAP[r][c]=' ';sx=c*TS+2;sy=r*TS;}
+      else{MAP[r][c]=' ';}
     }
   }
-  return {tiles,rows,cols,spawnX,spawnY,goalX,goalY};
+  if(lvl.mp) mPlats=lvl.mp.map(p=>({...p,cur:p.x,cy:p.y,t:Math.random()*20}));
+  return{sx,sy};
 }
-
-let currentMap = null;
-let fakeTiles = {};
-let platforms = [];
 
 function loadLevel(idx){
-  G.level = idx;
-  G.dead = false;
-  G.levelTime = 0;
-  G.glitchTimer = 0;
-  fakeTiles = {};
-  platforms = [];
-
-  const lvl = LEVELS[idx];
-  currentMap = parseLevel(lvl);
-
-  G.player.x = currentMap.spawnX;
-  G.player.y = currentMap.spawnY;
-  G.player.vx = 0;
-  G.player.vy = 0;
-  G.player.onGround = false;
-
-  if(lvl.platforms){
-    platforms = lvl.platforms.map(p=>({...p}));
-  }
-
-  document.getElementById('levelLabel').textContent = `LVL ${idx+1}`;
-  document.getElementById('deathLabel').textContent = `DEATHS: ${G.deaths}`;
-  document.getElementById('controls').style.display='flex';
-
-  // Show level message
-  if(lvl.msg) showMsg(lvl.msg, 2500);
+  levelIdx=idx; isDead=false; glitchT=0; particles=[];
+  const{sx,sy}=parseLevel(idx);
+  P.x=sx;P.y=sy;P.vx=0;P.vy=0;P.onGround=false;
+  camX=0;camY=0;
+  document.getElementById('lblLevel').textContent=`LEVEL ${idx+1}`;
+  document.getElementById('lblDeaths').textContent=`DEATHS: ${deaths}`;
+  document.getElementById('ctrlBar').style.display='flex';
+  showMsg(LEVELS[idx].msg,2800);
 }
 
-function showMsg(text, duration=2500){
-  const box = document.getElementById('msgBox');
-  box.textContent = text;
-  box.classList.add('show');
-  clearTimeout(G.msgTimer);
-  G.msgTimer = setTimeout(()=>box.classList.remove('show'), duration);
+function showMsg(t,ms=2500){
+  const el=document.getElementById('msgTxt');
+  el.textContent=t; el.classList.add('show');
+  clearTimeout(msgTimer);
+  msgTimer=setTimeout(()=>el.classList.remove('show'),ms);
 }
 
-// ── Physics constants ──
-const GRAVITY = 900;
-const JUMP_FORCE = -340;
-const MOVE_SPEED = 110;
-const FRICTION = 0.75;
-const FAKE_DELAY = 800;
-
-// ── Main game loop ──
-let lastTime = 0;
-function gameLoop(ts){
-  if(!G.running){requestAnimationFrame(gameLoop);return;}
-  const dt = Math.min((ts - lastTime)/1000, 0.05);
-  lastTime = ts;
-
-  G.levelTime += dt;
-  G.glitchTimer -= dt;
-
-  if(!G.dead){
-    update(dt);
-  }
-  render();
-  requestAnimationFrame(gameLoop);
-}
-
+// ── Update
 function update(dt){
-  const p = G.player;
-  const lvl = LEVELS[G.level];
+  if(isDead||!gameRunning)return;
+  const lvl=LEVELS[levelIdx];
 
-  // ── Horizontal movement ──
-  if(G.keys.left)  p.vx = -MOVE_SPEED;
-  else if(G.keys.right) p.vx = MOVE_SPEED;
-  else p.vx *= FRICTION;
+  if(KEY.left)       P.vx=-WALK;
+  else if(KEY.right) P.vx= WALK;
+  else               P.vx*=FRIC;
 
-  // ── Gravity ──
-  p.vy += GRAVITY * dt;
+  if(doJump&&P.onGround){P.vy=JUMP_V;P.onGround=false;}
+  doJump=false;
 
-  // ── Moving platforms ──
-  platforms.forEach(pl=>{
-    pl.t += dt;
-    const cycle = pl.range / pl.speed;
-    const t = pl.t % (cycle*2);
-    if(pl.axis==='x'){
-      pl.cx = pl.x + (t<cycle ? t*pl.speed : (cycle*2-t)*pl.speed);
-      pl.cy = pl.y;
-    } else {
-      pl.cx = pl.x;
-      pl.cy = pl.y + (t<cycle ? t*pl.speed : (cycle*2-t)*pl.speed);
-    }
+  P.vy+=GRAVITY*dt;
+  if(P.vy>700)P.vy=700;
+
+  // fake tile timers
+  Object.keys(fakeTiles).forEach(k=>{
+    fakeTiles[k].life-=dt*1000;
+    if(fakeTiles[k].life<=0)fakeTiles[k].broken=true;
   });
 
-  // ── Collision ──
-  p.onGround = false;
-  moveAxis('x', p.vx * dt);
-  moveAxis('y', p.vy * dt);
-
-  // ── Camera ──
-  const camTargetX = p.x - canvas.width/2 + p.w/2;
-  const camTargetY = p.y - canvas.height/2 + p.h/2;
-  const maxCamX = currentMap.cols * TS - canvas.width;
-  const maxCamY = currentMap.rows * TS - canvas.height;
-  G.camera.x += (camTargetX - G.camera.x) * 0.12;
-  G.camera.y += (camTargetY - G.camera.y) * 0.12;
-  G.camera.x = Math.max(0, Math.min(maxCamX, G.camera.x));
-  G.camera.y = Math.max(0, Math.min(maxCamY, G.camera.y));
-
-  // ── Fall off screen = death ──
-  if(p.y > currentMap.rows * TS + 100) die();
-
-  // ── Goal check ──
-  if(currentMap.goalX && currentMap.goalY){
-    if(overlapsGoal(p, currentMap.goalX, currentMap.goalY)) nextLevel();
-  }
-
-  // ── Particles update ──
-  G.particles = G.particles.filter(pt=>{
-    pt.x+=pt.vx*dt; pt.y+=pt.vy*dt;
-    pt.vy+=200*dt; pt.life-=dt;
-    pt.alpha = pt.life/pt.maxLife;
-    return pt.life>0;
+  // moving platforms
+  mPlats.forEach(mp=>{
+    mp.t+=dt;
+    const cyc=mp.rng/mp.sp, ph=mp.t%(cyc*2);
+    if(mp.ax==='x'){mp.cur=mp.x+(ph<cyc?ph*mp.sp:(cyc*2-ph)*mp.sp);mp.cy=mp.y;}
+    else{mp.cur=mp.x;mp.cy=mp.y+(ph<cyc?ph*mp.sp:(cyc*2-ph)*mp.sp);}
   });
+
+  P.onGround=false;
+  stepAxis('x',P.vx*dt);
+  stepAxis('y',P.vy*dt);
+
+  if(P.y>mapRows*TS+100)die();
+  checkGoal();
+
+  // camera
+  const tx=P.x+P.w/2-CW/2, ty=P.y+P.h/2-CH/2;
+  camX+=(tx-camX)*0.14; camY+=(ty-camY)*0.14;
+  camX=Math.max(0,Math.min(Math.max(0,mapCols*TS-CW),camX));
+  camY=Math.max(0,Math.min(Math.max(0,mapRows*TS-CH),camY));
+
+  particles=particles.filter(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=300*dt;p.life-=dt;p.a=p.life/p.ml;return p.life>0;});
+  glitchT=Math.max(0,glitchT-dt);
 }
 
-function moveAxis(axis, delta){
-  const p = G.player;
-  if(delta===0) return;
-  if(axis==='x') p.x+=delta; else p.y+=delta;
-  const tiles = currentMap.tiles;
-
-  // tile collisions
-  const left=Math.floor(p.x/TS), right=Math.floor((p.x+p.w-1)/TS);
-  const top=Math.floor(p.y/TS), bottom=Math.floor((p.y+p.h-1)/TS);
-
-  for(let r=top;r<=bottom;r++){
-    for(let c=left;c<=right;c++){
-      const tile = tiles[r]?.[c];
-      if(tile===undefined||tile===TILE.AIR||tile===TILE.MSG) continue;
-      if(tile===TILE.SPIKE){die();return;}
-      if(tile===TILE.GOAL) continue;
-
-      if(tile===TILE.FAKE){
-        const key=`${r}_${c}`;
-        if(!fakeTiles[key]) fakeTiles[key]={timer:FAKE_DELAY,active:true};
-        if(!fakeTiles[key].active) continue;
+function stepAxis(ax,delta){
+  if(ax==='x')P.x+=delta; else P.y+=delta;
+  const cL=Math.floor(P.x/TS), cR=Math.floor((P.x+P.w-1)/TS);
+  const rT=Math.floor(P.y/TS), rB=Math.floor((P.y+P.h-1)/TS);
+  for(let r=rT;r<=rB;r++){
+    for(let c=cL;c<=cR;c++){
+      const t=MAP[r]?.[c];
+      if(!t||t===' ')continue;
+      if(t==='S'){die();return;}
+      if(t==='G')continue;
+      if(t==='F'){
+        const k=`${r}_${c}`;
+        if(!fakeTiles[k])fakeTiles[k]={life:FAKE_MS,broken:false};
+        if(fakeTiles[k].broken)continue;
       }
-
-      // Solid collision
-      const tw=TS,th=TS;
       const tx=c*TS,ty=r*TS;
-      if(!(p.x+p.w<=tx||p.x>=tx+tw||p.y+p.h<=ty||p.y>=ty+th)){
-        if(axis==='x'){
-          if(delta>0) p.x=tx-p.w;
-          else p.x=tx+tw;
-          p.vx=0;
-        } else {
-          if(delta>0){p.y=ty-p.h;p.vy=0;p.onGround=true;}
-          else{p.y=ty+th;p.vy=0;}
-        }
+      if(P.x+P.w<=tx||P.x>=tx+TS||P.y+P.h<=ty||P.y>=ty+TS)continue;
+      if(ax==='x'){
+        if(P.vx>0){P.x=tx-P.w;P.vx=0;}
+        else{P.x=tx+TS;P.vx=0;}
+      }else{
+        if(P.vy>0){P.y=ty-P.h;P.vy=0;P.onGround=true;}
+        else{P.y=ty+TS;P.vy=0;}
       }
     }
   }
-
-  // Moving platform collisions
-  platforms.forEach(pl=>{
-    const px=pl.cx,py=pl.cy,pw=pl.w,ph=pl.h;
-    if(!(p.x+p.w<=px||p.x>=px+pw||p.y+p.h<=py||p.y>=py+ph)){
-      if(axis==='y'&&delta>0&&p.y+p.h-delta<=py+ph){
-        p.y=py-p.h;p.vy=0;p.onGround=true;
-        p.x+=pl.axis==='x'?(pl.speed*0.016*(pl.t%((pl.range/pl.speed)*2)<(pl.range/pl.speed)?1:-1)):0;
-      } else if(axis==='x'){
-        if(delta>0) p.x=px-p.w;
-        else p.x=px+pw;
-        p.vx=0;
-      }
+  mPlats.forEach(mp=>{
+    const px=mp.cur,py=mp.cy,pw=mp.w,ph=mp.h;
+    if(P.x+P.w<=px||P.x>=px+pw||P.y+P.h<=py||P.y>=py+ph)return;
+    if(ax==='y'){
+      if(P.vy>=0){P.y=py-P.h;P.vy=0;P.onGround=true;}
+      else{P.y=py+ph;P.vy=0;}
+    }else{
+      if(P.vx>0){P.x=px-P.w;P.vx=0;}else{P.x=px+pw;P.vx=0;}
     }
   });
-
-  // Tick fake tiles
-  Object.keys(fakeTiles).forEach(key=>{
-    const ft=fakeTiles[key];
-    if(ft.active){ft.timer-=16;if(ft.timer<=0)ft.active=false;}
-  });
 }
 
-function overlapsGoal(p,gx,gy){
-  return p.x+p.w>gx&&p.x<gx+TS&&p.y+p.h>gy&&p.y<gy+TS;
-}
-
-function die(){
-  if(G.dead) return;
-  G.dead=true;
-  G.deaths++;
-  G.glitchTimer=0.5;
-
-  // Particles
-  for(let i=0;i<16;i++){
-    G.particles.push({
-      x:G.player.x+G.player.w/2, y:G.player.y+G.player.h/2,
-      vx:(Math.random()-0.5)*120, vy:Math.random()*-150-50,
-      life:0.8+Math.random()*0.4, maxLife:1.2,
-      alpha:1, size:2+Math.random()*3, color:'#888'
-    });
-  }
-
-  setTimeout(()=>{
-    document.getElementById('deathScreen').classList.remove('hidden');
-    const msgs = DEATH_MSGS;
-    document.getElementById('deathMsg').textContent = msgs[G.deaths % msgs.length];
-    document.getElementById('deathLabel').textContent = `DEATHS: ${G.deaths}`;
-  },400);
+function checkGoal(){
+  const gx=goalC*TS,gy=goalR*TS;
+  if(P.x+P.w>gx&&P.x<gx+TS&&P.y+P.h>gy&&P.y<gy+TS)nextLevel();
 }
 
 function nextLevel(){
-  const next = G.level+1;
-  if(next>=LEVELS.length){
-    showEnding();
-    return;
-  }
-  // Random cryptic message sometimes
-  if(Math.random()<0.4) showMsg(MESSAGES[Math.floor(Math.random()*MESSAGES.length)]);
-  setTimeout(()=>loadLevel(next), 300);
+  glitchT=0.25;
+  const n=levelIdx+1;
+  if(n>=LEVELS.length){setTimeout(showEnding,400);return;}
+  if(Math.random()<0.4)showMsg(CRYPTIC[Math.floor(Math.random()*CRYPTIC.length)]);
+  setTimeout(()=>loadLevel(n),350);
 }
 
-// ── Rendering ──
+function die(){
+  if(isDead)return;
+  isDead=true;deaths++;glitchT=0.7;
+  for(let i=0;i<20;i++)particles.push({x:P.x+P.w/2,y:P.y+P.h/2,vx:(Math.random()-.5)*150,vy:Math.random()*-170-30,life:.9+Math.random()*.5,ml:1.4,a:1,sz:2+Math.random()*3});
+  setTimeout(()=>{
+    document.getElementById('deathMsg').textContent=DEAD_MSG[deaths%DEAD_MSG.length];
+    document.getElementById('lblDeaths').textContent=`DEATHS: ${deaths}`;
+    document.getElementById('deathScreen').classList.remove('hidden');
+  },550);
+}
+
+// ── Render
 function render(){
-  const p = G.player;
-  const lvl = LEVELS[G.level];
-  const cx = Math.round(G.camera.x), cy = Math.round(G.camera.y);
-
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // Background
-  ctx.fillStyle = '#0a0a0a';
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  // Subtle grid lines
-  ctx.strokeStyle='rgba(255,255,255,0.015)';
-  ctx.lineWidth=1;
-  for(let x=0;x<canvas.width;x+=TS){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
-  for(let y=0;y<canvas.height;y+=TS){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+  ctx.clearRect(0,0,CW,CH);
+  ctx.fillStyle='#080808';ctx.fillRect(0,0,CW,CH);
+  ctx.strokeStyle='rgba(255,255,255,0.012)';ctx.lineWidth=1;
+  for(let x=0;x<CW;x+=TS){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke();}
+  for(let y=0;y<CH;y+=TS){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke();}
 
   ctx.save();
-  ctx.translate(-cx,-cy);
+  ctx.translate(-Math.round(camX),-Math.round(camY));
 
-  const tiles = currentMap.tiles;
-  const visLeft = Math.max(0,Math.floor(cx/TS)-1);
-  const visRight = Math.min(currentMap.cols,Math.ceil((cx+canvas.width)/TS)+1);
-  const visTop = Math.max(0,Math.floor(cy/TS)-1);
-  const visBot = Math.min(currentMap.rows,Math.ceil((cy+canvas.height)/TS)+1);
+  const c0=Math.max(0,Math.floor(camX/TS)-1),c1=Math.min(mapCols,c0+Math.ceil(CW/TS)+2);
+  const r0=Math.max(0,Math.floor(camY/TS)-1),r1=Math.min(mapRows,r0+Math.ceil(CH/TS)+2);
 
-  for(let r=visTop;r<visBot;r++){
-    for(let c=visLeft;c<visRight;c++){
-      const tile = tiles[r]?.[c];
-      const tx=c*TS,ty=r*TS;
-      if(tile===TILE.WALL){
-        ctx.fillStyle='#1a1a1a';
-        ctx.fillRect(tx,ty,TS,TS);
-        ctx.strokeStyle='rgba(255,255,255,0.05)';
-        ctx.lineWidth=0.5;
-        ctx.strokeRect(tx+0.5,ty+0.5,TS-1,TS-1);
-      } else if(tile===TILE.SPIKE){
-        drawSpike(tx,ty);
-      } else if(tile===TILE.GOAL){
-        drawGoal(tx,ty);
-      } else if(tile===TILE.FAKE){
-        const key=`${r}_${c}`;
-        const ft=fakeTiles[key];
-        if(!ft||ft.active){
-          const alpha = ft ? ft.timer/FAKE_DELAY : 1;
-          ctx.globalAlpha=alpha*0.6;
-          ctx.fillStyle='#1a1a1a';
-          ctx.fillRect(tx,ty,TS,TS);
-          ctx.strokeStyle='rgba(255,100,100,0.1)';
-          ctx.lineWidth=0.5;
-          ctx.strokeRect(tx+0.5,ty+0.5,TS-1,TS-1);
+  for(let r=r0;r<r1;r++){
+    for(let c=c0;c<c1;c++){
+      const t=MAP[r]?.[c],tx=c*TS,ty=r*TS;
+      if(t==='W'){
+        ctx.fillStyle='#181818';ctx.fillRect(tx,ty,TS,TS);
+        ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=.5;ctx.strokeRect(tx+.5,ty+.5,TS-1,TS-1);
+      }else if(t==='S'){
+        ctx.fillStyle='#200e0e';ctx.fillRect(tx,ty,TS,TS);
+        ctx.fillStyle='#bb2222';ctx.beginPath();
+        for(let i=0;i<3;i++){const sw=TS/3;ctx.moveTo(tx+i*sw,ty+TS);ctx.lineTo(tx+i*sw+sw/2,ty+3);ctx.lineTo(tx+i*sw+sw,ty+TS);}
+        ctx.fill();
+      }else if(t==='G'){
+        const pulse=.5+.5*Math.sin(Date.now()*.003);
+        ctx.fillStyle=`rgba(210,210,160,${.04+pulse*.07})`;ctx.fillRect(tx,ty,TS,TS);
+        ctx.strokeStyle=`rgba(220,220,160,${.25+pulse*.3})`;ctx.lineWidth=1;ctx.strokeRect(tx+2,ty+2,TS-4,TS-4);
+        ctx.fillStyle=`rgba(255,255,180,${.5+pulse*.5})`;ctx.fillRect(tx+TS/2-2,ty+TS/2-2,4,4);
+      }else if(t==='F'){
+        const k=`${r}_${c}`,ft=fakeTiles[k];
+        if(!ft||!ft.broken){
+          ctx.globalAlpha=(ft?(ft.life/FAKE_MS):.8);
+          ctx.fillStyle='#181818';ctx.fillRect(tx,ty,TS,TS);
+          ctx.strokeStyle='rgba(255,80,80,0.15)';ctx.lineWidth=.5;ctx.strokeRect(tx+.5,ty+.5,TS-1,TS-1);
           ctx.globalAlpha=1;
         }
-      } else if(tile===TILE.MSG){
-        // subtle glow dot
-        ctx.fillStyle='rgba(255,255,255,0.05)';
-        ctx.fillRect(tx,ty,TS,TS);
       }
     }
   }
 
-  // Moving platforms
-  platforms.forEach(pl=>{
-    ctx.fillStyle='#222';
-    ctx.fillRect(pl.cx,pl.cy,pl.w,pl.h);
-    ctx.strokeStyle='rgba(255,255,255,0.08)';
-    ctx.lineWidth=0.5;
-    ctx.strokeRect(pl.cx+0.5,pl.cy+0.5,pl.w-1,pl.h-1);
+  mPlats.forEach(mp=>{
+    ctx.fillStyle='#202020';ctx.fillRect(mp.cur,mp.cy,mp.w,mp.h);
+    ctx.strokeStyle='rgba(255,255,255,0.07)';ctx.lineWidth=.5;ctx.strokeRect(mp.cur+.5,mp.cy+.5,mp.w-1,mp.h-1);
   });
 
-  // Player
-  if(!G.dead){
-    const glow = G.glitchTimer>0;
-    if(glow){
-      ctx.shadowColor='#f00';ctx.shadowBlur=8;
-    }
-    ctx.fillStyle = '#d8d8d8';
-    ctx.fillRect(p.x, p.y, p.w, p.h);
-
-    // player eye
-    ctx.fillStyle='#000';
-    const eyeX = p.vx<-5?p.x+2:p.x+p.w-5;
-    ctx.fillRect(eyeX, p.y+3, 3, 3);
-    ctx.shadowBlur=0;
+  if(!isDead){
+    if(glitchT>0){ctx.shadowColor='#f00';ctx.shadowBlur=10;}
+    ctx.fillStyle='#d0d0d0';ctx.fillRect(P.x,P.y,P.w,P.h);
+    ctx.shadowBlur=0;ctx.fillStyle='#080808';
+    const ex=P.vx<-5?P.x+1:P.x+P.w-4;
+    ctx.fillRect(ex,P.y+3,3,3);
   }
 
-  // Particles
-  G.particles.forEach(pt=>{
-    ctx.globalAlpha=pt.alpha;
-    ctx.fillStyle=pt.color;
-    ctx.fillRect(pt.x-pt.size/2,pt.y-pt.size/2,pt.size,pt.size);
-  });
+  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.a);ctx.fillStyle='#999';ctx.fillRect(p.x-p.sz/2,p.y-p.sz/2,p.sz,p.sz);});
   ctx.globalAlpha=1;
-
   ctx.restore();
 
-  // Darkness overlay for dark levels
-  if(lvl.darkMode){
-    const playerScreenX = p.x - cx;
-    const playerScreenY = p.y - cy;
-    const grad = ctx.createRadialGradient(
-      playerScreenX+p.w/2, playerScreenY+p.h/2, 20,
-      playerScreenX+p.w/2, playerScreenY+p.h/2, 160
-    );
-    grad.addColorStop(0,'rgba(0,0,0,0)');
-    grad.addColorStop(0.5,'rgba(0,0,0,0.6)');
-    grad.addColorStop(1,'rgba(0,0,0,0.95)');
-    ctx.fillStyle=grad;
-    ctx.fillRect(0,0,canvas.width,canvas.height);
+  if(LEVELS[levelIdx]&&LEVELS[levelIdx].dark){
+    const sx=P.x+P.w/2-camX,sy=P.y+P.h/2-camY;
+    const g=ctx.createRadialGradient(sx,sy,18,sx,sy,150);
+    g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(.45,'rgba(0,0,0,0.55)');g.addColorStop(1,'rgba(0,0,0,0.97)');
+    ctx.fillStyle=g;ctx.fillRect(0,0,CW,CH);
   }
 
-  // Glitch effect
-  if(G.glitchTimer>0){
-    ctx.fillStyle=`rgba(255,0,0,${G.glitchTimer*0.1})`;
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-    // scan line shift
-    const sliceH=Math.floor(Math.random()*8)+4;
-    const sliceY=Math.floor(Math.random()*canvas.height);
-    const imgData=ctx.getImageData(0,sliceY,canvas.width,sliceH);
-    ctx.putImageData(imgData,Math.random()>0.5?4:-4,sliceY);
+  if(glitchT>0){
+    ctx.fillStyle=`rgba(255,0,0,${glitchT*.08})`;ctx.fillRect(0,0,CW,CH);
+    const sh=Math.floor(Math.random()*10)+3,sy2=Math.floor(Math.random()*CH);
+    try{const d=ctx.getImageData(0,sy2,CW,sh);ctx.putImageData(d,Math.random()>.5?5:-5,sy2);}catch(e){}
   }
 
-  // Scan lines overlay
-  ctx.fillStyle='rgba(0,0,0,0.08)';
-  for(let y=0;y<canvas.height;y+=4){ctx.fillRect(0,y,canvas.width,2);}
-
-  // Vignette
-  const vig=ctx.createRadialGradient(canvas.width/2,canvas.height/2,canvas.height*0.25,canvas.width/2,canvas.height/2,canvas.height*0.75);
-  vig.addColorStop(0,'transparent');
-  vig.addColorStop(1,'rgba(0,0,0,0.55)');
-  ctx.fillStyle=vig;
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='rgba(0,0,0,0.07)';
+  for(let y=0;y<CH;y+=4)ctx.fillRect(0,y,CW,2);
+  const vig=ctx.createRadialGradient(CW/2,CH/2,CH*.2,CW/2,CH/2,CH*.75);
+  vig.addColorStop(0,'transparent');vig.addColorStop(1,'rgba(0,0,0,0.6)');
+  ctx.fillStyle=vig;ctx.fillRect(0,0,CW,CH);
 }
 
-function drawSpike(tx,ty){
-  ctx.fillStyle='#2a1a1a';
-  ctx.fillRect(tx,ty,TS,TS);
-  ctx.fillStyle='#cc3333';
-  ctx.beginPath();
-  const n=3, sw=TS/n;
-  for(let i=0;i<n;i++){
-    ctx.moveTo(tx+i*sw, ty+TS);
-    ctx.lineTo(tx+i*sw+sw/2, ty+4);
-    ctx.lineTo(tx+i*sw+sw, ty+TS);
-  }
-  ctx.fill();
+function loop(ts){
+  requestAnimationFrame(loop);
+  const dt=Math.min((ts-lastTS)/1000,.05);
+  lastTS=ts;
+  if(gameRunning)update(dt);
+  render();
 }
 
-function drawGoal(tx,ty){
-  const t=Date.now()/1000;
-  const pulse=0.5+0.5*Math.sin(t*3);
-  ctx.fillStyle=`rgba(220,220,180,${0.05+pulse*0.08})`;
-  ctx.fillRect(tx,ty,TS,TS);
-  ctx.strokeStyle=`rgba(220,220,180,${0.3+pulse*0.3})`;
-  ctx.lineWidth=1;
-  ctx.strokeRect(tx+2,ty+2,TS-4,TS-4);
-  ctx.fillStyle=`rgba(255,255,200,${0.6+pulse*0.4})`;
-  ctx.fillRect(tx+TS/2-2,ty+TS/2-2,4,4);
-}
-
-// ── Jump on tap / keys ──
-function jump(){
-  if(G.player.onGround){
-    G.player.vy = JUMP_FORCE;
-    G.player.onGround=false;
-  }
-}
-
-// ── Keyboard ──
+// ── Controls
 window.addEventListener('keydown',e=>{
-  if(e.key==='ArrowLeft'||e.key==='a'){G.keys.left=true;}
-  if(e.key==='ArrowRight'||e.key==='d'){G.keys.right=true;}
-  if(e.key==='ArrowUp'||e.key==='w'||e.key===' '){jump();}
-  if(e.key==='ArrowDown'||e.key==='s'){G.keys.down=true;}
-});
+  if(e.key==='ArrowLeft'||e.key==='a')KEY.left=true;
+  if(e.key==='ArrowRight'||e.key==='d')KEY.right=true;
+  if(e.key==='ArrowUp'||e.key==='w'||e.key===' ')doJump=true;
+  e.preventDefault();
+},{passive:false});
 window.addEventListener('keyup',e=>{
-  if(e.key==='ArrowLeft'||e.key==='a'){G.keys.left=false;}
-  if(e.key==='ArrowRight'||e.key==='d'){G.keys.right=false;}
-  if(e.key==='ArrowDown'||e.key==='s'){G.keys.down=false;}
+  if(e.key==='ArrowLeft'||e.key==='a')KEY.left=false;
+  if(e.key==='ArrowRight'||e.key==='d')KEY.right=false;
 });
 
-// ── D-Pad buttons ──
-function holdBtn(id, keyName, isJump){
-  const el = document.getElementById(id);
-  el.addEventListener('touchstart',e=>{e.preventDefault();if(isJump){jump();}else{G.keys[keyName]=true;}},{passive:false});
-  el.addEventListener('touchend',e=>{e.preventDefault();if(!isJump)G.keys[keyName]=false;},{passive:false});
-  el.addEventListener('mousedown',()=>{if(isJump){jump();}else{G.keys[keyName]=true;}});
-  el.addEventListener('mouseup',()=>{if(!isJump)G.keys[keyName]=false;});
+function bindBtn(id,down,up){
+  const el=document.getElementById(id);
+  function onDown(e){e.preventDefault();e.stopPropagation();down();el.classList.add('pressed');}
+  function onUp(e){e.preventDefault();e.stopPropagation();if(up)up();el.classList.remove('pressed');}
+  el.addEventListener('touchstart',onDown,{passive:false});
+  el.addEventListener('touchend',onUp,{passive:false});
+  el.addEventListener('touchcancel',onUp,{passive:false});
+  el.addEventListener('mousedown',onDown);
+  el.addEventListener('mouseup',onUp);
+  el.addEventListener('mouseleave',onUp);
 }
-holdBtn('btnLeft','left',false);
-holdBtn('btnRight','right',false);
-holdBtn('btnUp','up',true);
+bindBtn('btnLeft',()=>KEY.left=true,()=>KEY.left=false);
+bindBtn('btnRight',()=>KEY.right=true,()=>KEY.right=false);
+bindBtn('btnJump',()=>{doJump=true;},null);
 
-// ── Swipe controls ──
-let touchStartX=0,touchStartY=0,touchActive=false;
-canvas.addEventListener('touchstart',e=>{
-  e.preventDefault();
-  const t=e.touches[0];
-  touchStartX=t.clientX; touchStartY=t.clientY; touchActive=true;
-},{passive:false});
-canvas.addEventListener('touchmove',e=>{
-  e.preventDefault();
-  if(!touchActive) return;
-  const t=e.touches[0];
-  const dx=t.clientX-touchStartX, dy=t.clientY-touchStartY;
-  if(Math.abs(dx)>10){G.keys.left=dx<0;G.keys.right=dx>0;}
-  else{G.keys.left=false;G.keys.right=false;}
-},{passive:false});
-canvas.addEventListener('touchend',e=>{
-  e.preventDefault();
-  const t=e.changedTouches[0];
-  const dx=t.clientX-touchStartX, dy=t.clientY-touchStartY;
-  if(Math.abs(dy)>20&&dy<0) jump();
-  if(Math.abs(dx)<10&&Math.abs(dy)<10) jump();
-  G.keys.left=false;G.keys.right=false;
-  touchActive=false;
-},{passive:false});
-
-// ── Ending sequence ──
 function showEnding(){
-  G.running=false;
-  document.getElementById('controls').style.display='none';
-  const end=document.getElementById('endScreen');
-  end.classList.remove('hidden');
-
-  const letter=document.getElementById('endLetter');
-  const lines=[
-    "If you reached this point…",
-    "it means you solved every puzzle.",
-    "navigated every trap.",
-    "refused to give up.",
-    "",
-    "But the real secret of this game…",
-    "was never the puzzles.",
-    "",
-    "It was this message.",
-    "",
-    "I just wanted to tell you something",
-    "I couldn't say out loud…",
-    "",
-    "I love you.",
-  ];
-
-  let delay=1200;
-  lines.forEach((line,i)=>{
+  gameRunning=false;
+  document.getElementById('ctrlBar').style.display='none';
+  document.getElementById('endScreen').classList.remove('hidden');
+  const el=document.getElementById('endLetter');
+  const lines=["If you reached this point…","it means you solved every mystery.","navigated every trap.","refused to give up."," ","But the real secret of this game…","was never the puzzles."," ","It was this message."," ","I just wanted to tell you something","I couldn't say out loud…"," ","I love you."];
+  let d=1000;
+  lines.forEach((ln,i)=>{
     setTimeout(()=>{
-      if(line===''){letter.innerHTML+='<br>';return;}
-      letter.innerHTML+=(i>0?'<br>':'')+line;
-    },delay);
-    delay+=line===''?400:600;
+      if(ln===' '){el.innerHTML+='\n\n';return;}
+      el.innerHTML+=(i===0?'':'\n')+ln;
+    },d);
+    d+=ln===' '?300:700;
   });
 }
 
-// ── Buttons ──
 document.getElementById('startBtn').addEventListener('click',()=>{
   document.getElementById('titleScreen').classList.add('hidden');
-  G.running=true;
+  gameRunning=true;
   loadLevel(0);
-  lastTime=performance.now();
-  requestAnimationFrame(gameLoop);
 });
-
 document.getElementById('retryBtn').addEventListener('click',()=>{
   document.getElementById('deathScreen').classList.add('hidden');
-  loadLevel(G.level);
-  G.dead=false;
+  isDead=false;
+  loadLevel(levelIdx);
 });
 
-// ── Ambient glitch scheduler ──
-setInterval(()=>{
-  if(G.running&&!G.dead&&Math.random()<0.12){
-    G.glitchTimer=0.08+Math.random()*0.12;
-  }
-},3000);
+setInterval(()=>{if(gameRunning&&!isDead&&Math.random()<.1)glitchT=.06+Math.random()*.1;},4000);
 
-// Start loop (idle before title dismissed)
-requestAnimationFrame(gameLoop);
-
-// Ambient scan on title
-function titleAnim(){
-  if(!G.running){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle='#050505';
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-    const t=Date.now()/1000;
-    for(let i=0;i<5;i++){
-      const x=Math.sin(t*0.3+i)*canvas.width*0.3+canvas.width/2;
-      const y=Math.cos(t*0.2+i*1.5)*canvas.height*0.3+canvas.height/2;
-      const r=ctx.createRadialGradient(x,y,0,x,y,80);
-      r.addColorStop(0,`rgba(40,40,40,0.06)`);
-      r.addColorStop(1,'transparent');
-      ctx.fillStyle=r;
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-    }
-    requestAnimationFrame(titleAnim);
-  }
-}
-titleAnim();
+lastTS=performance.now();
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>
