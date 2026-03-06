@@ -63,7 +63,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 
 <div id="deathScreen" class="screen hidden">
   <div class="d-title">TERMINATED</div>
-  <div class="d-sub" id="deathMsg">You were never meant to reach the end. <br> © 2026 vibe coding — NLBNxAI</div>
+  <div class="d-sub" id="deathMsg">You were never meant to reach the end.</div>
   <button class="d-retry" id="retryBtn">[ TRY AGAIN ]</button>
 </div>
 
@@ -125,7 +125,9 @@ let particles=[];
 let camX=0, camY=0;
 
 const FAKE_MS=600;
-const GRAVITY=900, JUMP_V=-400, WALK=112, FRIC=0.70;
+const GRAVITY=900, JUMP_V=-420, WALK=120, FRIC=0.70;
+const COYOTE_MS=120; // ms after leaving ground where jump still works
+let coyoteTimer=0;   // counts down in ms
 
 const CRYPTIC=["you are being observed.","not everything is what it seems.","keep going.","you're closer than you think.","why are you still here?","something remembers you.","the path was chosen before you arrived.","almost.","∅","do you feel it?","it was always meant to be you."];
 const DEAD_MSG=["You were never meant to reach the end.","The path rejects you.","Try again. Or don't.","Nothing persists here.","Almost... but not yet.","The floor remembers.","You fell for it.","Again.","Pain is part of the design."];
@@ -347,11 +349,19 @@ function update(dt){
   // Instant movement — no friction lag
   if(KEY.left)        { P.vx=-WALK; }
   else if(KEY.right)  { P.vx= WALK; }
-  else                { P.vx=0; }  // stop instantly when no key held
+  else                { P.vx=0; }
+
+  // Coyote time — track how long since last grounded
+  if(P.onGround) coyoteTimer=COYOTE_MS;
+  else coyoteTimer=Math.max(0, coyoteTimer - dt*1000);
 
   if(jumpPressed){
-    if(P.onGround){P.vy=JUMP_V;P.onGround=false;}
     jumpPressed=false;
+    if(coyoteTimer>0){
+      P.vy=JUMP_V;
+      P.onGround=false;
+      coyoteTimer=0;
+    }
   }
 
   P.vy+=GRAVITY*dt;
@@ -540,11 +550,18 @@ function loop(ts){
 // ── Controls
 function doJump(){
   if(!gameRunning||isDead) return;
-  if(P.onGround){
+  // Instant: if coyote window open, jump right now without waiting for next frame
+  if(coyoteTimer>0){
     P.vy=JUMP_V;
     P.onGround=false;
+    coyoteTimer=0;
+    jumpPressed=false;
+  } else {
+    // Not on ground yet — buffer it (e.g. pressed jump just before landing)
+    jumpPressed=true;
+    // Clear buffer after 100ms so it doesn't fire unexpectedly later
+    setTimeout(()=>{ jumpPressed=false; }, 100);
   }
-  jumpPressed=true; // also buffer in case called between frames
 }
 
 window.addEventListener('keydown',e=>{
