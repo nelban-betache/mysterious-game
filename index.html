@@ -61,7 +61,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#1a1a2e;touch-action
   <div class="scan-line"></div>
   <div class="t-logo">∅ UNKNOWN</div>
   <div class="t-sub">Subject [REDACTED] — Protocol 7</div>
-  <div class="t-hint">something is waiting at the end <br> — NLBNxAI </div>
+  <div class="t-hint">something is waiting at the end</div>
 
   <div class="theme-label">CHOOSE THEME</div>
   <div id="themePicker">
@@ -255,14 +255,14 @@ const LEVELS=[
  map:["####################",
       "#P                 #",
       "##                 #",
-      "#    ^   ^   ^     #",
-      "###          ######",
-      "#                  #",
       "#    ^       ^     #",
-      "#############  #####",
+      "###                #",
+      "#                  #",
+      "#         ^        #",
+      "#######        #####",
       "#              G   #",
       "####################"],
- mp:[{x:80,y:240,w:55,h:10,sp:42,rng:110,ax:'x'},{x:150,y:300,w:55,h:10,sp:52,rng:90,ax:'x'}]},
+ mp:[{x:60,y:235,w:70,h:10,sp:30,rng:130,ax:'x'}]},
 
 {msg:"∅", dark:true,
  map:["####################",
@@ -781,78 +781,91 @@ function initAudio(){
   if(audioCtx) return;
   audioCtx = new AudioCtx();
   bgGain = audioCtx.createGain();
-  bgGain.gain.value = 0.18;
+  bgGain.gain.value = 0.10;
   bgGain.connect(audioCtx.destination);
 }
 
-// ── Background ambient music (eerie drone + arpeggios) ──
+// ── Background ambient music (soft, calm, mysterious) ──
 function startBgMusic(){
   if(musicStarted || !audioCtx) return;
   musicStarted = true;
 
-  // Deep drone layer
-  function makeDrone(freq, vol){
-    const osc = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    const filt = audioCtx.createBiquadFilter();
-    filt.type = 'lowpass';
-    filt.frequency.value = 400;
-    osc.type = 'sawtooth';
-    osc.frequency.value = freq;
-    g.gain.value = vol;
-    // Slowly drift pitch
-    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-    osc.frequency.linearRampToValueAtTime(freq*1.002, audioCtx.currentTime+8);
-    osc.frequency.linearRampToValueAtTime(freq*0.998, audioCtx.currentTime+16);
-    osc.connect(filt); filt.connect(g); g.connect(bgGain);
+  // Very soft reverb-like tail using convolver
+  const convolver = audioCtx.createConvolver();
+  const revBuf = audioCtx.createBuffer(2, audioCtx.sampleRate*2, audioCtx.sampleRate);
+  for(let c=0;c<2;c++){
+    const d=revBuf.getChannelData(c);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3)*0.4;
+  }
+  convolver.buffer=revBuf;
+  const revGain=audioCtx.createGain();
+  revGain.gain.value=0.5;
+  convolver.connect(revGain); revGain.connect(bgGain);
+
+  // Soft sine pad — barely audible warm tone
+  function makePad(freq, vol, detune=0){
+    const osc=audioCtx.createOscillator();
+    const g=audioCtx.createGain();
+    osc.type='sine';
+    osc.frequency.value=freq;
+    osc.detune.value=detune;
+    g.gain.value=vol;
+    osc.connect(g); g.connect(bgGain);
+    osc.connect(convolver);
     osc.start();
     bgNodes.push(osc);
   }
-  makeDrone(55,  0.4);   // deep bass
-  makeDrone(82,  0.2);
-  makeDrone(110, 0.15);
+  makePad(55,  0.06);   // very soft bass
+  makePad(82.4,0.04, 3);
+  makePad(110, 0.03);
 
-  // Eerie high pad
-  const pad = audioCtx.createOscillator();
-  const padGain = audioCtx.createGain();
-  const padFilt = audioCtx.createBiquadFilter();
-  padFilt.type='bandpass'; padFilt.frequency.value=800; padFilt.Q.value=2;
-  pad.type='sine'; pad.frequency.value=220;
-  padGain.gain.value=0.06;
-  pad.connect(padFilt); padFilt.connect(padGain); padGain.connect(bgGain);
-  pad.start();
-  bgNodes.push(pad);
-
-  // Pulsing LFO on pad
-  const lfo = audioCtx.createOscillator();
-  const lfoGain = audioCtx.createGain();
-  lfo.frequency.value = 0.3;
-  lfoGain.gain.value = 30;
-  lfo.connect(lfoGain); lfoGain.connect(pad.frequency);
-  lfo.start();
-  bgNodes.push(lfo);
-
-  // Mysterious arpeggio notes
-  const NOTES = [110, 130.8, 146.8, 164.8, 174.6, 196, 220, 164.8, 130.8];
-  let noteIdx = 0;
-  function playNote(){
+  // Gentle slow melody notes — like a music box
+  const MELODY = [
+    261.6, 0, 220, 0, 196, 0, 174.6,
+    0, 196, 0, 220, 0, 261.6, 0,
+    220, 0, 174.6, 0, 164.8, 0, 174.6
+  ];
+  let mIdx=0;
+  function playMelodyNote(){
     if(!audioCtx||!musicStarted) return;
-    const osc = audioCtx.createOscillator();
-    const env = audioCtx.createGain();
-    const filt = audioCtx.createBiquadFilter();
-    filt.type='lowpass'; filt.frequency.value=600;
-    osc.type='triangle';
-    osc.frequency.value = NOTES[noteIdx % NOTES.length];
-    noteIdx++;
-    env.gain.setValueAtTime(0, audioCtx.currentTime);
-    env.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime+0.05);
-    env.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.8);
-    osc.connect(filt); filt.connect(env); env.connect(bgGain);
-    osc.start(); osc.stop(audioCtx.currentTime+0.85);
-    // random interval 0.4–1.2s
-    setTimeout(playNote, 400 + Math.random()*800);
+    const freq = MELODY[mIdx % MELODY.length];
+    mIdx++;
+    if(freq > 0){
+      const osc=audioCtx.createOscillator();
+      const env=audioCtx.createGain();
+      osc.type='sine';
+      osc.frequency.value=freq;
+      const t=audioCtx.currentTime;
+      env.gain.setValueAtTime(0,t);
+      env.gain.linearRampToValueAtTime(0.07, t+0.08);
+      env.gain.exponentialRampToValueAtTime(0.001, t+1.8);
+      osc.connect(env); env.connect(bgGain);
+      osc.connect(convolver);
+      osc.start(t); osc.stop(t+1.9);
+    }
+    setTimeout(playMelodyNote, 700 + Math.random()*200);
   }
-  setTimeout(playNote, 600);
+  setTimeout(playMelodyNote, 1000);
+
+  // Occasional soft high chime
+  function playChime(){
+    if(!audioCtx||!musicStarted) return;
+    const CHIMES=[523.2,659.2,783.9,1046.5];
+    const freq=CHIMES[Math.floor(Math.random()*CHIMES.length)];
+    const osc=audioCtx.createOscillator();
+    const env=audioCtx.createGain();
+    osc.type='sine';
+    osc.frequency.value=freq;
+    const t=audioCtx.currentTime;
+    env.gain.setValueAtTime(0,t);
+    env.gain.linearRampToValueAtTime(0.04,t+0.02);
+    env.gain.exponentialRampToValueAtTime(0.001,t+2.5);
+    osc.connect(env); env.connect(bgGain);
+    osc.connect(convolver);
+    osc.start(t); osc.stop(t+2.6);
+    setTimeout(playChime, 3000+Math.random()*4000);
+  }
+  setTimeout(playChime, 2000);
 }
 
 // ── Death / glitch sound ──
