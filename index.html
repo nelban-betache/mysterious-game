@@ -20,10 +20,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 .t-start{margin-top:56px;font-family:'Share Tech Mono',monospace;font-size:clamp(12px,3vw,15px);color:#666;border:1px solid #2a2a2a;padding:14px 44px;letter-spacing:.35em;background:transparent;cursor:pointer;transition:.3s;}
 .t-start:active{color:#bbb;border-color:#666;}
 .t-credit{position:absolute;bottom:18px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#252525;letter-spacing:.2em;}
-#hud{position:fixed;top:0;left:0;width:100%;padding:10px 14px;display:flex;justify-content:space-between;z-index:10;pointer-events:none;}
-#hud span{font-family:'Share Tech Mono',monospace;font-size:11px;color:#383838;letter-spacing:.2em;}
-#restartBtn{font-family:'Share Tech Mono',monospace;font-size:13px;color:#444;background:rgba(255,255,255,0.05);border:1px solid #2a2a2a;border-radius:6px;padding:5px 10px;cursor:pointer;letter-spacing:.1em;transition:.2s;}
-#restartBtn:active{color:#aaa;border-color:#666;background:rgba(255,255,255,0.12);}
+#hud{position:fixed;top:0;left:0;width:100%;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;z-index:30;pointer-events:none;}
+#hud span{font-family:'Share Tech Mono',monospace;font-size:11px;color:#383838;letter-spacing:.2em;pointer-events:none;}
+#restartBtn{font-family:'Share Tech Mono',monospace;font-size:14px;color:#777;background:rgba(255,255,255,0.08);border:1px solid #444;border-radius:8px;padding:8px 16px;cursor:pointer;letter-spacing:.15em;pointer-events:all;-webkit-touch-callout:none;touch-action:manipulation;}
+#restartBtn:active{color:#fff;border-color:#aaa;background:rgba(255,255,255,0.2);}
 #msgWrap{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:9;pointer-events:none;}
 #msgTxt{font-family:'Crimson Pro',serif;font-style:italic;font-size:clamp(14px,4vw,19px);color:#484848;text-align:center;padding:0 36px;line-height:1.7;opacity:0;transition:opacity 1.4s;max-width:340px;}
 #msgTxt.show{opacity:1;}
@@ -109,7 +109,7 @@ window.addEventListener('resize',resize);
 
 // ── State
 const KEY={left:false,right:false};
-let doJump=false, deaths=0, levelIdx=0;
+let jumpPressed=false, deaths=0, levelIdx=0;
 let gameRunning=false, isDead=false;
 let msgTimer=null, glitchT=0, lastTS=0;
 
@@ -348,8 +348,10 @@ function update(dt){
   else if(KEY.right) P.vx= WALK;
   else               P.vx*=FRIC;
 
-  if(doJump&&P.onGround){P.vy=JUMP_V;P.onGround=false;}
-  doJump=false;
+  if(jumpPressed){
+    if(P.onGround){P.vy=JUMP_V;P.onGround=false;}
+    jumpPressed=false;
+  }
 
   P.vy+=GRAVITY*dt;
   if(P.vy>700)P.vy=700;
@@ -535,10 +537,19 @@ function loop(ts){
 }
 
 // ── Controls
+function doJump(){
+  // fire immediately — no frame delay
+  if(P.onGround&&gameRunning&&!isDead){
+    P.vy=JUMP_V; P.onGround=false;
+  } else {
+    jumpPressed=true; // buffer it for next frame
+  }
+}
+
 window.addEventListener('keydown',e=>{
   if(e.key==='ArrowLeft'||e.key==='a')KEY.left=true;
   if(e.key==='ArrowRight'||e.key==='d')KEY.right=true;
-  if(e.key==='ArrowUp'||e.key==='w'||e.key===' ')doJump=true;
+  if(e.key==='ArrowUp'||e.key==='w'||e.key===' ')doJump();
   e.preventDefault();
 },{passive:false});
 window.addEventListener('keyup',e=>{
@@ -559,7 +570,7 @@ function bindBtn(id,down,up){
 }
 bindBtn('btnLeft',()=>KEY.left=true,()=>KEY.left=false);
 bindBtn('btnRight',()=>KEY.right=true,()=>KEY.right=false);
-bindBtn('btnJump',()=>{doJump=true;},null);
+bindBtn('btnJump',()=>doJump(),null);
 
 function showEnding(){
   gameRunning=false;
@@ -577,13 +588,19 @@ function showEnding(){
   });
 }
 
-document.getElementById('restartBtn').addEventListener('click',()=>{
+// ── Restart button (works anytime during gameplay)
+const restartEl=document.getElementById('restartBtn');
+function doRestart(e){
+  if(e)e.preventDefault();
   document.getElementById('deathScreen').classList.add('hidden');
   isDead=false;
   deaths++;
   document.getElementById('lblDeaths').textContent=`DEATHS: ${deaths}`;
+  KEY.left=false; KEY.right=false; jumpPressed=false;
   loadLevel(levelIdx);
-});
+}
+restartEl.addEventListener('touchstart',doRestart,{passive:false});
+restartEl.addEventListener('click',doRestart);
 
 document.getElementById('startBtn').addEventListener('click',()=>{
   document.getElementById('titleScreen').classList.add('hidden');
