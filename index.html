@@ -32,10 +32,17 @@ html,body{width:100%;height:100%;overflow:hidden;background:#1a1a2e;touch-action
 .d-sub{font-family:'Share Tech Mono',monospace;font-size:clamp(10px,2.5vw,12px);color:#7a6060;margin-top:18px;letter-spacing:.25em;text-align:center;padding:0 30px;}
 .d-retry{margin-top:48px;font-family:'Share Tech Mono',monospace;font-size:clamp(11px,3vw,14px);color:#a09090;border:1px solid #604040;padding:12px 38px;letter-spacing:.3em;background:transparent;cursor:pointer;transition:.3s;}
 .d-retry:active{color:#fff;border-color:#cc6666;}
-#endScreen{background:linear-gradient(160deg,#1a1a2e,#0f2040);z-index:25;padding:28px;overflow-y:auto;}
-#endLetter{font-family:'Crimson Pro',serif;font-style:italic;font-weight:300;font-size:clamp(15px,4.5vw,21px);color:#b0bde0;text-align:center;line-height:2;max-width:360px;white-space:pre-line;opacity:0;animation:revealUp 2s forwards 1s;}
-#endHeart{font-size:clamp(22px,6vw,34px);opacity:0;animation:revealUp 2s forwards 7s;display:block;text-align:center;margin-top:28px;color:#e080a0;}
-#endCredit{font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a5a7a;letter-spacing:.3em;opacity:0;animation:revealUp 2s forwards 9s;display:block;text-align:center;margin-top:20px;}
+#endScreen{background:linear-gradient(160deg,#0a0812,#120820,#0a1020);z-index:25;padding:28px;overflow-y:auto;justify-content:center;align-items:center;}
+#endBox{display:flex;flex-direction:column;align-items:center;justify-content:center;max-width:340px;width:100%;gap:0;}
+#endLines{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;}
+.end-line{font-family:'Crimson Pro',serif;font-style:italic;font-weight:300;font-size:clamp(15px,4.2vw,20px);color:#c0b0d8;text-align:center;line-height:1.5;opacity:0;transform:translateY(8px);transition:opacity 0.9s ease, transform 0.9s ease;}
+.end-line.show{opacity:1;transform:translateY(0);}
+.end-line.spacer{height:10px;}
+.end-line.highlight{color:#e8d0ff;font-size:clamp(17px,4.8vw,23px);}
+#endHeart{font-size:clamp(28px,8vw,42px);opacity:0;transform:scale(0.5);transition:opacity 1.2s ease,transform 1.2s ease;text-align:center;margin-top:22px;color:#ff88aa;}
+#endHeart.show{opacity:1;transform:scale(1);}
+#endCredit{font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a3a5a;letter-spacing:.3em;opacity:0;transition:opacity 1.5s ease;text-align:center;margin-top:16px;}
+#endCredit.show{opacity:1;}
 #gameCanvas{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);display:block;image-rendering:pixelated;}
 #ctrlBar{position:fixed;bottom:0;left:0;width:100%;padding:14px 18px 28px;display:none;justify-content:space-between;align-items:flex-end;z-index:11;}
 .lr-wrap{display:flex;gap:10px;}
@@ -84,9 +91,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#1a1a2e;touch-action
 </div>
 
 <div id="endScreen" class="screen hidden">
-  <div id="endLetter"></div>
-  <span id="endHeart">♡</span>
-  <span id="endCredit">© 2026 vibe coding — NLBNxAI</span>
+  <div id="endBox">
+    <div id="endLines"></div>
+    <div id="endHeart">♡</div>
+    <div id="endCredit">© 2026 vibe coding — NLBNxAI</div>
+  </div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -141,6 +150,7 @@ let particles=[];
 let camX=0, camY=0;
 
 const FAKE_MS=600;
+const FINAL_FAKE_MS=900; // long enough to feel like a wall, short enough to find
 const GRAVITY=900, JUMP_V=-420, WALK=120, FRIC=0.70;
 const COYOTE_MS=120; // ms after leaving ground where jump still works
 let coyoteTimer=0;   // counts down in ms
@@ -304,7 +314,7 @@ const LEVELS=[
       "####################"]},
 
 // FINAL LEVEL — worthy ending challenge
-{msg:"something is waiting.", dark:true, final:true,
+{msg:"the wall remembers.", dark:true, final:true,
  map:["####################",
       "#P   ^        ^    #",
       "#  ######  ######  #",
@@ -314,7 +324,7 @@ const LEVELS=[
       "#   ######         #",
       "#       ^          #",
       "#     #######      #",
-      "#     #  G  #      #",
+      "#     F  G  #      #",
       "#     #######      #",
       "####################"]},
 ];
@@ -350,6 +360,10 @@ function loadLevel(idx){
   document.getElementById('lblLevel').textContent=`LEVEL ${idx+1}`;
   document.getElementById('lblDeaths').textContent=`DEATHS: ${deaths}`;
   showMsg(LEVELS[idx].msg,2800);
+  // Extra hint on final level
+  if(LEVELS[idx].final){
+    setTimeout(()=>showMsg('one wall is not what it seems…', 3500), 4000);
+  }
 }
 
 function showMsg(t,ms=2500){
@@ -429,7 +443,8 @@ function stepAxis(ax,delta){
       if(t==='G')continue;
       if(t==='F'){
         const k=`${r}_${c}`;
-        if(!fakeTiles[k])fakeTiles[k]={life:FAKE_MS,broken:false};
+        const fakeTime = LEVELS[levelIdx].final ? FINAL_FAKE_MS : FAKE_MS;
+        if(!fakeTiles[k])fakeTiles[k]={life:fakeTime,broken:false};
         if(fakeTiles[k].broken)continue;
       }
       const tx=c*TS,ty=r*TS;
@@ -626,9 +641,15 @@ function render(){
       }else if(t==='F'){
         const k=`${r}_${c}`,ft=fakeTiles[k];
         if(!ft||!ft.broken){
-          ctx.globalAlpha=(ft?(ft.life/FAKE_MS):.9);
-          ctx.fillStyle=T.fakeFill; ctx.fillRect(tx,ty,TS,TS);
-          ctx.strokeStyle=T.fakeStroke; ctx.lineWidth=.5; ctx.strokeRect(tx+.5,ty+.5,TS-1,TS-1);
+          const isFinal = LEVELS[levelIdx]?.final;
+          const alpha = ft ? (ft.life / (isFinal ? FINAL_FAKE_MS : FAKE_MS)) : 1;
+          // Final level: subtle slow flicker as a hint — barely noticeable
+          const flicker = isFinal ? (0.85 + 0.15 * Math.sin(Date.now() * 0.004)) : 1;
+          ctx.globalAlpha = alpha * flicker;
+          ctx.fillStyle = T.wall; ctx.fillRect(tx,ty,TS,TS);
+          ctx.strokeStyle = isFinal ? T.wallStroke : T.fakeStroke;
+          ctx.lineWidth=.5; ctx.strokeRect(tx+.5,ty+.5,TS-1,TS-1);
+          if(isFinal){ ctx.fillStyle=T.wallHi; ctx.fillRect(tx,ty,TS,3); }
           ctx.globalAlpha=1;
         }
       }
@@ -732,19 +753,61 @@ bindBtn('btnRight',()=>KEY.right=true,()=>KEY.right=false);
 bindBtn('btnJump',()=>doJump(),null);
 
 function showEnding(){
+  if(showEnding._shown) return; // prevent double trigger
+  showEnding._shown = true;
   gameRunning=false;
+  document.getElementById('hud').style.display='none';
   document.getElementById('ctrlBar').style.display='none';
-  document.getElementById('endScreen').classList.remove('hidden');
-  const el=document.getElementById('endLetter');
-  const lines=["If you reached this point…","it means you solved every mystery.","navigated every trap.","refused to give up."," ","But the real secret of this game…","was never the puzzles."," ","It was this message."," ","I just wanted to tell you something","I couldn't say out loud…"," ","I love you."];
-  let d=1000;
-  lines.forEach((ln,i)=>{
-    setTimeout(()=>{
-      if(ln===' '){el.innerHTML+='\n\n';return;}
-      el.innerHTML+=(i===0?'':'\n')+ln;
-    },d);
-    d+=ln===' '?300:700;
+  document.getElementById('msgWrap').style.display='none';
+
+  const screen = document.getElementById('endScreen');
+  screen.classList.remove('hidden');
+
+  // Stop background music, start romantic music
+  musicStarted=false;
+  bgNodes.forEach(n=>{ try{n.stop();}catch(e){} });
+  bgNodes=[];
+  bgGain.gain.setValueAtTime(bgGain.gain.value, audioCtx.currentTime);
+  bgGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime+1.5);
+  setTimeout(()=>{ bgGain.gain.value=0.13; playRomanticMusic(); }, 1800);
+
+  const container = document.getElementById('endLines');
+  container.innerHTML = ''; // clear — prevents any duplication
+
+  const LINES = [
+    {text:'If you reached this point…',       cls:''},
+    {text:'it means you solved every mystery.', cls:''},
+    {text:'navigated every trap.',              cls:''},
+    {text:'refused to give up.',                cls:''},
+    {text:'',                                   cls:'spacer'},
+    {text:'But the real secret of this game…', cls:''},
+    {text:'was never the puzzles.',             cls:''},
+    {text:'',                                   cls:'spacer'},
+    {text:'It was this message.',               cls:''},
+    {text:'',                                   cls:'spacer'},
+    {text:'I just wanted to tell you something', cls:''},
+    {text:"I couldn't say out loud…",           cls:''},
+    {text:'',                                   cls:'spacer'},
+    {text:'I love you.',                        cls:'highlight'},
+  ];
+
+  let delay = 800;
+  LINES.forEach(ln=>{
+    const div = document.createElement('div');
+    div.className = 'end-line' + (ln.cls ? ' '+ln.cls : '');
+    if(ln.text) div.textContent = ln.text;
+    container.appendChild(div);
+    setTimeout(()=>div.classList.add('show'), delay);
+    delay += ln.cls==='spacer' ? 200 : 750;
   });
+
+  // Heart + credit after all lines
+  setTimeout(()=>{
+    document.getElementById('endHeart').classList.add('show');
+  }, delay + 400);
+  setTimeout(()=>{
+    document.getElementById('endCredit').classList.add('show');
+  }, delay + 1400);
 }
 
 // ── Restart button (works anytime during gameplay)
@@ -874,7 +937,73 @@ function startBgMusic(){
   setTimeout(playChime, 2000);
 }
 
-// ── Death / glitch sound ──
+// ── Romantic ending music ──
+function playRomanticMusic(){
+  if(!audioCtx) return;
+
+  // Warm reverb
+  const conv = audioCtx.createConvolver();
+  const rb = audioCtx.createBuffer(2, audioCtx.sampleRate*3, audioCtx.sampleRate);
+  for(let c=0;c<2;c++){
+    const d=rb.getChannelData(c);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2)*0.5;
+  }
+  conv.buffer=rb;
+  const convGain=audioCtx.createGain(); convGain.gain.value=0.4;
+  conv.connect(convGain); convGain.connect(bgGain);
+
+  // Soft warm pad chords — C major feel
+  const CHORDS=[
+    [261.6,329.6,392],   // C maj
+    [246.9,311.1,392],   // B min
+    [220,  277.2,329.6], // A min
+    [196,  261.6,329.6], // G maj
+  ];
+  let ci=0;
+  function playChord(){
+    if(!audioCtx) return;
+    const chord=CHORDS[ci%CHORDS.length]; ci++;
+    chord.forEach((freq,i)=>{
+      const osc=audioCtx.createOscillator();
+      const g=audioCtx.createGain();
+      osc.type='sine';
+      osc.frequency.value=freq;
+      const t=audioCtx.currentTime + i*0.04;
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(0.09,t+0.3);
+      g.gain.setValueAtTime(0.09,t+2.2);
+      g.gain.linearRampToValueAtTime(0,t+3.2);
+      osc.connect(g); g.connect(bgGain);
+      osc.connect(conv);
+      osc.start(t); osc.stop(t+3.3);
+    });
+    setTimeout(playChord, 3200);
+  }
+  playChord();
+
+  // Gentle melody on top
+  const MELODY=[392,440,392,349.2,392,0,329.6,349.2,392,440,392,0];
+  let mi=0;
+  function playMNote(){
+    if(!audioCtx) return;
+    const freq=MELODY[mi%MELODY.length]; mi++;
+    if(freq>0){
+      const osc=audioCtx.createOscillator();
+      const g=audioCtx.createGain();
+      osc.type='sine';
+      osc.frequency.value=freq*2; // octave up
+      const t=audioCtx.currentTime;
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(0.06,t+0.06);
+      g.gain.exponentialRampToValueAtTime(0.001,t+1.2);
+      osc.connect(g); g.connect(bgGain);
+      osc.connect(conv);
+      osc.start(t); osc.stop(t+1.3);
+    }
+    setTimeout(playMNote, 500+Math.random()*100);
+  }
+  setTimeout(playMNote, 600);
+}
 function playDeathSound(){
   if(!audioCtx) return;
   const t = audioCtx.currentTime;
