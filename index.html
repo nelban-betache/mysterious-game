@@ -20,7 +20,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 .t-start{margin-top:56px;font-family:'Share Tech Mono',monospace;font-size:clamp(12px,3vw,15px);color:#666;border:1px solid #2a2a2a;padding:14px 44px;letter-spacing:.35em;background:transparent;cursor:pointer;transition:.3s;}
 .t-start:active{color:#bbb;border-color:#666;}
 .t-credit{position:absolute;bottom:18px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#252525;letter-spacing:.2em;}
-#hud{position:fixed;top:0;left:0;width:100%;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;z-index:30;pointer-events:none;}
+#hud{position:fixed;top:0;left:0;width:100%;padding:10px 14px;display:none;justify-content:space-between;align-items:center;z-index:30;pointer-events:none;}
 #hud span{font-family:'Share Tech Mono',monospace;font-size:11px;color:#383838;letter-spacing:.2em;pointer-events:none;}
 #restartBtn{font-family:'Share Tech Mono',monospace;font-size:14px;color:#777;background:rgba(255,255,255,0.08);border:1px solid #444;border-radius:8px;padding:8px 16px;cursor:pointer;letter-spacing:.15em;pointer-events:all;-webkit-touch-callout:none;touch-action:manipulation;}
 #restartBtn:active{color:#fff;border-color:#aaa;background:rgba(255,255,255,0.2);}
@@ -37,7 +37,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 #endHeart{font-size:clamp(22px,6vw,34px);opacity:0;animation:revealUp 2s forwards 7s;display:block;text-align:center;margin-top:28px;color:#555;}
 #endCredit{font-family:'Share Tech Mono',monospace;font-size:10px;color:#222;letter-spacing:.3em;opacity:0;animation:revealUp 2s forwards 9s;display:block;text-align:center;margin-top:20px;}
 #gameCanvas{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);display:block;image-rendering:pixelated;}
-#ctrlBar{position:fixed;bottom:0;left:0;width:100%;padding:14px 18px 28px;display:flex;justify-content:space-between;align-items:flex-end;z-index:11;}
+#ctrlBar{position:fixed;bottom:0;left:0;width:100%;padding:14px 18px 28px;display:none;justify-content:space-between;align-items:flex-end;z-index:11;}
 .lr-wrap{display:flex;gap:10px;}
 .btn-lr{width:74px;height:74px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:28px;color:rgba(255,255,255,0.35);cursor:pointer;-webkit-touch-callout:none;transition:background .1s;}
 .btn-lr.pressed,.btn-lr:active{background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.8);}
@@ -329,7 +329,6 @@ function loadLevel(idx){
   camX=0;camY=0;
   document.getElementById('lblLevel').textContent=`LEVEL ${idx+1}`;
   document.getElementById('lblDeaths').textContent=`DEATHS: ${deaths}`;
-  document.getElementById('ctrlBar').style.display='flex';
   showMsg(LEVELS[idx].msg,2800);
 }
 
@@ -345,9 +344,10 @@ function update(dt){
   if(isDead||!gameRunning)return;
   const lvl=LEVELS[levelIdx];
 
-  if(KEY.left)       P.vx=-WALK;
-  else if(KEY.right) P.vx= WALK;
-  else               P.vx*=FRIC;
+  // Instant movement — no friction lag
+  if(KEY.left)        { P.vx=-WALK; }
+  else if(KEY.right)  { P.vx= WALK; }
+  else                { P.vx=0; }  // stop instantly when no key held
 
   if(jumpPressed){
     if(P.onGround){P.vy=JUMP_V;P.onGround=false;}
@@ -539,12 +539,12 @@ function loop(ts){
 
 // ── Controls
 function doJump(){
-  // fire immediately — no frame delay
-  if(P.onGround&&gameRunning&&!isDead){
-    P.vy=JUMP_V; P.onGround=false;
-  } else {
-    jumpPressed=true; // buffer it for next frame
+  if(!gameRunning||isDead) return;
+  if(P.onGround){
+    P.vy=JUMP_V;
+    P.onGround=false;
   }
+  jumpPressed=true; // also buffer in case called between frames
 }
 
 window.addEventListener('keydown',e=>{
@@ -605,6 +605,8 @@ restartEl.addEventListener('click',doRestart);
 
 document.getElementById('startBtn').addEventListener('click',()=>{
   document.getElementById('titleScreen').classList.add('hidden');
+  document.getElementById('hud').style.display='flex';
+  document.getElementById('ctrlBar').style.display='flex';
   gameRunning=true;
   loadLevel(0);
 });
