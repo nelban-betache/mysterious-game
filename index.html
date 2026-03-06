@@ -46,6 +46,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#1a1a2e;touch-action
 #btnJump .j-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(150,180,255,0.5);letter-spacing:.15em;}
 #btnJump.pressed,#btnJump:active{background:rgba(100,150,255,0.3);border-color:rgba(200,220,255,0.6);}
 #btnJump.pressed .j-arrow{color:#fff;}
+.theme-label{font-family:'Share Tech Mono',monospace;font-size:10px;color:#5a6a8a;letter-spacing:.4em;margin-top:36px;text-transform:uppercase;}
+#themePicker{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:14px;max-width:300px;}
+.theme-btn{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.2em;padding:8px 14px;border:2px solid #444;border-radius:8px;cursor:pointer;color:#ccc;transition:all .2s;opacity:.6;}
+.theme-btn.active{opacity:1;transform:scale(1.08);color:#fff;}
+.theme-btn:active{transform:scale(0.96);}
 @keyframes glitch{0%,88%,100%{text-shadow:0 0 20px rgba(100,150,255,0.4);transform:none;}89%{text-shadow:-2px 0 #f66,2px 0 #6ff;transform:skewX(-1deg);}90%{text-shadow:2px 0 #f66,-2px 0 #6ff;transform:skewX(1deg);}91%{text-shadow:0 0 20px rgba(100,150,255,0.4);transform:none;}95%{text-shadow:-1px 0 #f66,1px 0 #6ff;}96%{text-shadow:0 0 20px rgba(100,150,255,0.4);}}
 @keyframes revealUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 </style>
@@ -56,7 +61,18 @@ html,body{width:100%;height:100%;overflow:hidden;background:#1a1a2e;touch-action
   <div class="scan-line"></div>
   <div class="t-logo">∅ UNKNOWN</div>
   <div class="t-sub">Subject [REDACTED] — Protocol 7</div>
-  <div class="t-hint">something is waiting at the end</div>
+  <div class="t-hint">something is waiting at the end <br> — NLBNxAI </div>
+
+  <div class="theme-label">CHOOSE THEME</div>
+  <div id="themePicker">
+    <div class="theme-btn active" data-theme="blue"    style="background:#2a3a6a;border-color:#6090ff;">BLUE</div>
+    <div class="theme-btn"        data-theme="dark"    style="background:#111;border-color:#444;">DARK</div>
+    <div class="theme-btn"        data-theme="forest"  style="background:#1a3a20;border-color:#4aaa55;">FOREST</div>
+    <div class="theme-btn"        data-theme="sunset"  style="background:#3a1a10;border-color:#ff6633;">SUNSET</div>
+    <div class="theme-btn"        data-theme="purple"  style="background:#2a1a4a;border-color:#aa66ff;">PURPLE</div>
+    <div class="theme-btn"        data-theme="pink"    style="background:#3a1a2a;border-color:#ff66aa;">PINK</div>
+  </div>
+
   <button class="t-start" id="startBtn">[ ENTER ]</button>
   <div class="t-credit">© 2026 vibe coding — NLBNxAI</div>
 </div>
@@ -363,6 +379,7 @@ function update(dt){
       P.vy=JUMP_V;
       P.onGround=false;
       coyoteTimer=0;
+      playJumpSound();
     }
   }
 
@@ -445,6 +462,7 @@ function checkGoal(){
 
 function nextLevel(){
   glitchT=0.25;
+  playLevelSound();
   const n=levelIdx+1;
   if(n>=LEVELS.length){setTimeout(showEnding,400);return;}
   if(Math.random()<0.4)showMsg(CRYPTIC[Math.floor(Math.random()*CRYPTIC.length)]);
@@ -454,6 +472,7 @@ function nextLevel(){
 function die(){
   if(isDead)return;
   isDead=true;deaths++;glitchT=0.7;
+  playDeathSound();
   for(let i=0;i<20;i++)particles.push({x:P.x+P.w/2,y:P.y+P.h/2,vx:(Math.random()-.5)*150,vy:Math.random()*-170-30,life:.9+Math.random()*.5,ml:1.4,a:1,sz:2+Math.random()*3});
   setTimeout(()=>{
     document.getElementById('deathMsg').textContent=DEAD_MSG[deaths%DEAD_MSG.length];
@@ -462,13 +481,122 @@ function die(){
   },550);
 }
 
+// ── Theme system ──────────────────────────
+const THEMES = {
+  blue:{
+    bg:'#1e2240', wall:'#2a3a6a', wallStroke:'rgba(100,150,255,0.2)', wallHi:'rgba(150,200,255,0.08)',
+    spike:'#ff4466', spikeBg:'#3a1a2a', goal:'rgba(100,255,180,{})', goalStroke:'rgba(100,255,180,{})',
+    plat:'#3a5080', platStroke:'rgba(150,200,255,0.3)', platHi:'rgba(150,200,255,0.1)',
+    player:'#e8eeff', playerGlow:'rgba(150,200,255,0.8)', eye:'#1e2240',
+    particle:'#aabbff', screenBg:'linear-gradient(160deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%)',
+    titleColor:'#e0e0ff', titleGlow:'rgba(100,150,255,0.4)', subColor:'#7080aa',
+    hintColor:'#6070a0', btnColor:'#a0b0e0', btnBorder:'#4a5a8a', btnBg:'rgba(100,130,220,0.1)',
+    hudColor:'#7a8ab0', msgColor:'#8090c0', gridStroke:'rgba(150,170,255,0.06)',
+    darkOverlay:'rgba(0,0,10,', vigColor:'rgba(0,0,20,0.4)',
+    fakeFill:'#2a3a6a', fakeStroke:'rgba(255,150,100,0.4)',
+  },
+  dark:{
+    bg:'#0d0d0d', wall:'#1e1e1e', wallStroke:'rgba(255,255,255,0.06)', wallHi:'rgba(255,255,255,0.04)',
+    spike:'#cc2222', spikeBg:'#1a0a0a', goal:'rgba(220,220,160,{})', goalStroke:'rgba(220,220,160,{})',
+    plat:'#252525', platStroke:'rgba(255,255,255,0.1)', platHi:'rgba(255,255,255,0.04)',
+    player:'#dddddd', playerGlow:'rgba(255,255,255,0.3)', eye:'#0d0d0d',
+    particle:'#aaaaaa', screenBg:'#000',
+    titleColor:'#cccccc', titleGlow:'rgba(255,255,255,0.2)', subColor:'#444',
+    hintColor:'#333', btnColor:'#666', btnBorder:'#333', btnBg:'rgba(255,255,255,0.05)',
+    hudColor:'#444', msgColor:'#555', gridStroke:'rgba(255,255,255,0.02)',
+    darkOverlay:'rgba(0,0,0,', vigColor:'rgba(0,0,0,0.5)',
+    fakeFill:'#1e1e1e', fakeStroke:'rgba(255,80,80,0.2)',
+  },
+  forest:{
+    bg:'#0f2016', wall:'#1a3a22', wallStroke:'rgba(80,200,100,0.2)', wallHi:'rgba(100,220,120,0.08)',
+    spike:'#ff4444', spikeBg:'#2a0f0f', goal:'rgba(120,255,150,{})', goalStroke:'rgba(120,255,150,{})',
+    plat:'#224a28', platStroke:'rgba(100,220,120,0.3)', platHi:'rgba(100,220,120,0.1)',
+    player:'#ccffcc', playerGlow:'rgba(100,220,100,0.8)', eye:'#0f2016',
+    particle:'#88ff88', screenBg:'linear-gradient(160deg,#0a1a0e,#0f2a14,#0a3010)',
+    titleColor:'#aaffaa', titleGlow:'rgba(80,220,80,0.5)', subColor:'#4a7a50',
+    hintColor:'#3a6040', btnColor:'#80c080', btnBorder:'#3a6a40', btnBg:'rgba(60,160,70,0.1)',
+    hudColor:'#5a8a60', msgColor:'#6a9a70', gridStroke:'rgba(80,200,80,0.06)',
+    darkOverlay:'rgba(0,5,0,', vigColor:'rgba(0,10,0,0.4)',
+    fakeFill:'#1a3a22', fakeStroke:'rgba(255,200,50,0.4)',
+  },
+  sunset:{
+    bg:'#1a0e08', wall:'#3a1e10', wallStroke:'rgba(255,130,60,0.2)', wallHi:'rgba(255,160,80,0.08)',
+    spike:'#ff2244', spikeBg:'#2a0808', goal:'rgba(255,220,80,{})', goalStroke:'rgba(255,220,80,{})',
+    plat:'#4a2210', platStroke:'rgba(255,150,60,0.3)', platHi:'rgba(255,150,60,0.1)',
+    player:'#ffe0c0', playerGlow:'rgba(255,180,80,0.8)', eye:'#1a0e08',
+    particle:'#ffaa66', screenBg:'linear-gradient(160deg,#1a0e08,#2a1408,#3a1808)',
+    titleColor:'#ffcc88', titleGlow:'rgba(255,160,60,0.5)', subColor:'#8a5030',
+    hintColor:'#6a3820', btnColor:'#ffaa66', btnBorder:'#7a4020', btnBg:'rgba(200,100,30,0.1)',
+    hudColor:'#8a6040', msgColor:'#9a7050', gridStroke:'rgba(255,130,50,0.06)',
+    darkOverlay:'rgba(5,2,0,', vigColor:'rgba(20,5,0,0.45)',
+    fakeFill:'#3a1e10', fakeStroke:'rgba(255,200,50,0.4)',
+  },
+  purple:{
+    bg:'#130d22', wall:'#2a1a4a', wallStroke:'rgba(180,100,255,0.2)', wallHi:'rgba(200,130,255,0.08)',
+    spike:'#ff4488', spikeBg:'#2a0a1a', goal:'rgba(200,150,255,{})', goalStroke:'rgba(200,150,255,{})',
+    plat:'#3a2060', platStroke:'rgba(180,120,255,0.3)', platHi:'rgba(180,120,255,0.1)',
+    player:'#e8d0ff', playerGlow:'rgba(180,120,255,0.8)', eye:'#130d22',
+    particle:'#cc88ff', screenBg:'linear-gradient(160deg,#110a20,#1a1035,#220a40)',
+    titleColor:'#cc99ff', titleGlow:'rgba(160,80,255,0.5)', subColor:'#6a4a8a',
+    hintColor:'#5a3a7a', btnColor:'#bb88ff', btnBorder:'#6a3aaa', btnBg:'rgba(140,60,220,0.1)',
+    hudColor:'#7a5a9a', msgColor:'#8a6aaa', gridStroke:'rgba(180,100,255,0.06)',
+    darkOverlay:'rgba(3,0,8,', vigColor:'rgba(10,0,20,0.45)',
+    fakeFill:'#2a1a4a', fakeStroke:'rgba(255,150,200,0.4)',
+  },
+  pink:{
+    bg:'#1a0a14', wall:'#3a1028', wallStroke:'rgba(255,100,180,0.2)', wallHi:'rgba(255,140,200,0.08)',
+    spike:'#ff2255', spikeBg:'#2a0812', goal:'rgba(255,180,220,{})', goalStroke:'rgba(255,180,220,{})',
+    plat:'#4a1535', platStroke:'rgba(255,120,180,0.3)', platHi:'rgba(255,120,180,0.1)',
+    player:'#ffd0e8', playerGlow:'rgba(255,130,190,0.8)', eye:'#1a0a14',
+    particle:'#ff88cc', screenBg:'linear-gradient(160deg,#180a12,#22101c,#2a0a20)',
+    titleColor:'#ffaacc', titleGlow:'rgba(255,100,180,0.5)', subColor:'#8a4a66',
+    hintColor:'#6a3050', btnColor:'#ff99cc', btnBorder:'#7a3060', btnBg:'rgba(200,60,140,0.1)',
+    hudColor:'#8a5070', msgColor:'#9a6080', gridStroke:'rgba(255,100,180,0.06)',
+    darkOverlay:'rgba(5,0,3,', vigColor:'rgba(20,0,12,0.45)',
+    fakeFill:'#3a1028', fakeStroke:'rgba(255,200,100,0.4)',
+  },
+};
+
+let currentTheme = THEMES.blue;
+
+function applyThemeToUI(t){
+  const ts = document.getElementById('titleScreen');
+  ts.style.background = t.screenBg;
+  document.querySelector('.t-logo').style.color = t.titleColor;
+  document.querySelector('.t-logo').style.textShadow = `0 0 20px ${t.titleGlow}`;
+  document.querySelector('.t-sub').style.color = t.subColor;
+  document.querySelector('.t-hint').style.color = t.hintColor;
+  document.querySelector('.t-start').style.color = t.btnColor;
+  document.querySelector('.t-start').style.borderColor = t.btnBorder;
+  document.querySelector('.t-start').style.background = t.btnBg;
+  document.getElementById('msgTxt').style.color = t.msgColor;
+}
+
+// Theme picker clicks
+document.querySelectorAll('.theme-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTheme = THEMES[btn.dataset.theme];
+    applyThemeToUI(currentTheme);
+    // update body bg
+    document.body.style.background = currentTheme.bg;
+  });
+  btn.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    btn.click();
+  },{passive:false});
+});
+
+// Apply default theme to UI on load
+applyThemeToUI(currentTheme);
+
 // ── Render
 function render(){
+  const T=currentTheme;
   ctx.clearRect(0,0,CW,CH);
-  // Bright blue-grey background
-  ctx.fillStyle='#1e2240';ctx.fillRect(0,0,CW,CH);
-  // Subtle grid
-  ctx.strokeStyle='rgba(150,170,255,0.06)';ctx.lineWidth=1;
+  ctx.fillStyle=T.bg; ctx.fillRect(0,0,CW,CH);
+  ctx.strokeStyle=T.gridStroke; ctx.lineWidth=1;
   for(let x=0;x<CW;x+=TS){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke();}
   for(let y=0;y<CH;y+=TS){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke();}
 
@@ -482,76 +610,70 @@ function render(){
     for(let c=c0;c<c1;c++){
       const t=MAP[r]?.[c],tx=c*TS,ty=r*TS;
       if(t==='W'){
-        // Bright teal-blue walls
-        ctx.fillStyle='#2a3a6a';ctx.fillRect(tx,ty,TS,TS);
-        ctx.strokeStyle='rgba(100,150,255,0.2)';ctx.lineWidth=.5;ctx.strokeRect(tx+.5,ty+.5,TS-1,TS-1);
-        // top highlight
-        ctx.fillStyle='rgba(150,200,255,0.08)';ctx.fillRect(tx,ty,TS,3);
+        ctx.fillStyle=T.wall; ctx.fillRect(tx,ty,TS,TS);
+        ctx.strokeStyle=T.wallStroke; ctx.lineWidth=.5; ctx.strokeRect(tx+.5,ty+.5,TS-1,TS-1);
+        ctx.fillStyle=T.wallHi; ctx.fillRect(tx,ty,TS,3);
       }else if(t==='S'){
-        ctx.fillStyle='#3a1a2a';ctx.fillRect(tx,ty,TS,TS);
-        ctx.fillStyle='#ff4466';ctx.beginPath();
+        ctx.fillStyle=T.spikeBg; ctx.fillRect(tx,ty,TS,TS);
+        ctx.fillStyle=T.spike; ctx.beginPath();
         for(let i=0;i<3;i++){const sw=TS/3;ctx.moveTo(tx+i*sw,ty+TS);ctx.lineTo(tx+i*sw+sw/2,ty+3);ctx.lineTo(tx+i*sw+sw,ty+TS);}
         ctx.fill();
       }else if(t==='G'){
         const pulse=.5+.5*Math.sin(Date.now()*.003);
-        ctx.fillStyle=`rgba(100,255,180,${.08+pulse*.1})`;ctx.fillRect(tx,ty,TS,TS);
-        ctx.strokeStyle=`rgba(100,255,180,${.5+pulse*.5})`;ctx.lineWidth=1.5;ctx.strokeRect(tx+2,ty+2,TS-4,TS-4);
-        ctx.fillStyle=`rgba(150,255,200,${.7+pulse*.3})`;ctx.fillRect(tx+TS/2-3,ty+TS/2-3,6,6);
+        ctx.fillStyle=T.goal.replace('{}',String(.08+pulse*.1)); ctx.fillRect(tx,ty,TS,TS);
+        ctx.strokeStyle=T.goalStroke.replace('{}',String(.5+pulse*.5)); ctx.lineWidth=1.5; ctx.strokeRect(tx+2,ty+2,TS-4,TS-4);
+        ctx.fillStyle=T.goal.replace('{}','1'); ctx.fillRect(tx+TS/2-3,ty+TS/2-3,6,6);
       }else if(t==='F'){
         const k=`${r}_${c}`,ft=fakeTiles[k];
         if(!ft||!ft.broken){
           ctx.globalAlpha=(ft?(ft.life/FAKE_MS):.9);
-          ctx.fillStyle='#2a3a6a';ctx.fillRect(tx,ty,TS,TS);
-          ctx.strokeStyle='rgba(255,150,100,0.4)';ctx.lineWidth=.5;ctx.strokeRect(tx+.5,ty+.5,TS-1,TS-1);
+          ctx.fillStyle=T.fakeFill; ctx.fillRect(tx,ty,TS,TS);
+          ctx.strokeStyle=T.fakeStroke; ctx.lineWidth=.5; ctx.strokeRect(tx+.5,ty+.5,TS-1,TS-1);
           ctx.globalAlpha=1;
         }
       }
     }
   }
 
-  // Moving platforms — brighter
   mPlats.forEach(mp=>{
-    ctx.fillStyle='#3a5080';ctx.fillRect(mp.cur,mp.cy,mp.w,mp.h);
-    ctx.strokeStyle='rgba(150,200,255,0.3)';ctx.lineWidth=1;ctx.strokeRect(mp.cur+.5,mp.cy+.5,mp.w-1,mp.h-1);
-    ctx.fillStyle='rgba(150,200,255,0.1)';ctx.fillRect(mp.cur,mp.cy,mp.w,3);
+    ctx.fillStyle=T.plat; ctx.fillRect(mp.cur,mp.cy,mp.w,mp.h);
+    ctx.strokeStyle=T.platStroke; ctx.lineWidth=1; ctx.strokeRect(mp.cur+.5,mp.cy+.5,mp.w-1,mp.h-1);
+    ctx.fillStyle=T.platHi; ctx.fillRect(mp.cur,mp.cy,mp.w,3);
   });
 
-  // Player — bright white with glow
   if(!isDead){
-    if(glitchT>0){ctx.shadowColor='#f66';ctx.shadowBlur=12;}
-    else{ctx.shadowColor='rgba(150,200,255,0.8)';ctx.shadowBlur=6;}
-    ctx.fillStyle='#e8eeff';ctx.fillRect(P.x,P.y,P.w,P.h);
-    ctx.shadowBlur=0;ctx.fillStyle='#1e2240';
+    if(glitchT>0){ctx.shadowColor=T.spike; ctx.shadowBlur=12;}
+    else{ctx.shadowColor=T.playerGlow; ctx.shadowBlur=6;}
+    ctx.fillStyle=T.player; ctx.fillRect(P.x,P.y,P.w,P.h);
+    ctx.shadowBlur=0; ctx.fillStyle=T.eye;
     const ex=P.vx<-5?P.x+1:P.x+P.w-4;
     ctx.fillRect(ex,P.y+3,3,3);
   }
 
-  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.a);ctx.fillStyle='#aabbff';ctx.fillRect(p.x-p.sz/2,p.y-p.sz/2,p.sz,p.sz);});
+  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.a);ctx.fillStyle=T.particle;ctx.fillRect(p.x-p.sz/2,p.y-p.sz/2,p.sz,p.sz);});
   ctx.globalAlpha=1;
   ctx.restore();
 
   if(LEVELS[levelIdx]&&LEVELS[levelIdx].dark){
     const sx=P.x+P.w/2-camX,sy=P.y+P.h/2-camY;
     const g=ctx.createRadialGradient(sx,sy,30,sx,sy,260);
-    g.addColorStop(0,'rgba(0,0,0,0)');
-    g.addColorStop(0.5,'rgba(0,0,10,0.2)');
-    g.addColorStop(1,'rgba(0,0,10,0.75)');
-    ctx.fillStyle=g;ctx.fillRect(0,0,CW,CH);
+    g.addColorStop(0,T.darkOverlay+'0)');
+    g.addColorStop(0.5,T.darkOverlay+'0.2)');
+    g.addColorStop(1,T.darkOverlay+'0.75)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,CW,CH);
   }
 
   if(glitchT>0){
-    ctx.fillStyle=`rgba(255,80,80,${glitchT*.08})`;ctx.fillRect(0,0,CW,CH);
+    ctx.fillStyle=`rgba(255,80,80,${glitchT*.08})`; ctx.fillRect(0,0,CW,CH);
     const sh=Math.floor(Math.random()*10)+3,sy2=Math.floor(Math.random()*CH);
     try{const d=ctx.getImageData(0,sy2,CW,sh);ctx.putImageData(d,Math.random()>.5?5:-5,sy2);}catch(e){}
   }
 
-  // Lighter scanlines
   ctx.fillStyle='rgba(0,0,0,0.04)';
   for(let y=0;y<CH;y+=4)ctx.fillRect(0,y,CW,2);
-  // Softer vignette
   const vig=ctx.createRadialGradient(CW/2,CH/2,CH*.3,CW/2,CH/2,CH*.8);
-  vig.addColorStop(0,'transparent');vig.addColorStop(1,'rgba(0,0,20,0.4)');
-  ctx.fillStyle=vig;ctx.fillRect(0,0,CW,CH);
+  vig.addColorStop(0,'transparent'); vig.addColorStop(1,T.vigColor);
+  ctx.fillStyle=vig; ctx.fillRect(0,0,CW,CH);
 }
 
 function loop(ts){
@@ -565,16 +687,14 @@ function loop(ts){
 // ── Controls
 function doJump(){
   if(!gameRunning||isDead) return;
-  // Instant: if coyote window open, jump right now without waiting for next frame
   if(coyoteTimer>0){
     P.vy=JUMP_V;
     P.onGround=false;
     coyoteTimer=0;
     jumpPressed=false;
+    playJumpSound();
   } else {
-    // Not on ground yet — buffer it (e.g. pressed jump just before landing)
     jumpPressed=true;
-    // Clear buffer after 100ms so it doesn't fire unexpectedly later
     setTimeout(()=>{ jumpPressed=false; }, 100);
   }
 }
@@ -639,6 +759,8 @@ document.getElementById('startBtn').addEventListener('click',()=>{
   document.getElementById('titleScreen').classList.add('hidden');
   document.getElementById('hud').style.display='flex';
   document.getElementById('ctrlBar').style.display='flex';
+  initAudio();
+  startBgMusic();
   gameRunning=true;
   loadLevel(0);
 });
@@ -648,7 +770,190 @@ document.getElementById('retryBtn').addEventListener('click',()=>{
   loadLevel(levelIdx);
 });
 
-setInterval(()=>{if(gameRunning&&!isDead&&Math.random()<.1)glitchT=.06+Math.random()*.1;},4000);
+// ── SOUND ENGINE (Web Audio API — no files needed) ──
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+let bgGain = null;
+let bgNodes = [];
+let musicStarted = false;
+
+function initAudio(){
+  if(audioCtx) return;
+  audioCtx = new AudioCtx();
+  bgGain = audioCtx.createGain();
+  bgGain.gain.value = 0.18;
+  bgGain.connect(audioCtx.destination);
+}
+
+// ── Background ambient music (eerie drone + arpeggios) ──
+function startBgMusic(){
+  if(musicStarted || !audioCtx) return;
+  musicStarted = true;
+
+  // Deep drone layer
+  function makeDrone(freq, vol){
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    const filt = audioCtx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.value = 400;
+    osc.type = 'sawtooth';
+    osc.frequency.value = freq;
+    g.gain.value = vol;
+    // Slowly drift pitch
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    osc.frequency.linearRampToValueAtTime(freq*1.002, audioCtx.currentTime+8);
+    osc.frequency.linearRampToValueAtTime(freq*0.998, audioCtx.currentTime+16);
+    osc.connect(filt); filt.connect(g); g.connect(bgGain);
+    osc.start();
+    bgNodes.push(osc);
+  }
+  makeDrone(55,  0.4);   // deep bass
+  makeDrone(82,  0.2);
+  makeDrone(110, 0.15);
+
+  // Eerie high pad
+  const pad = audioCtx.createOscillator();
+  const padGain = audioCtx.createGain();
+  const padFilt = audioCtx.createBiquadFilter();
+  padFilt.type='bandpass'; padFilt.frequency.value=800; padFilt.Q.value=2;
+  pad.type='sine'; pad.frequency.value=220;
+  padGain.gain.value=0.06;
+  pad.connect(padFilt); padFilt.connect(padGain); padGain.connect(bgGain);
+  pad.start();
+  bgNodes.push(pad);
+
+  // Pulsing LFO on pad
+  const lfo = audioCtx.createOscillator();
+  const lfoGain = audioCtx.createGain();
+  lfo.frequency.value = 0.3;
+  lfoGain.gain.value = 30;
+  lfo.connect(lfoGain); lfoGain.connect(pad.frequency);
+  lfo.start();
+  bgNodes.push(lfo);
+
+  // Mysterious arpeggio notes
+  const NOTES = [110, 130.8, 146.8, 164.8, 174.6, 196, 220, 164.8, 130.8];
+  let noteIdx = 0;
+  function playNote(){
+    if(!audioCtx||!musicStarted) return;
+    const osc = audioCtx.createOscillator();
+    const env = audioCtx.createGain();
+    const filt = audioCtx.createBiquadFilter();
+    filt.type='lowpass'; filt.frequency.value=600;
+    osc.type='triangle';
+    osc.frequency.value = NOTES[noteIdx % NOTES.length];
+    noteIdx++;
+    env.gain.setValueAtTime(0, audioCtx.currentTime);
+    env.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime+0.05);
+    env.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.8);
+    osc.connect(filt); filt.connect(env); env.connect(bgGain);
+    osc.start(); osc.stop(audioCtx.currentTime+0.85);
+    // random interval 0.4–1.2s
+    setTimeout(playNote, 400 + Math.random()*800);
+  }
+  setTimeout(playNote, 600);
+}
+
+// ── Death / glitch sound ──
+function playDeathSound(){
+  if(!audioCtx) return;
+  const t = audioCtx.currentTime;
+
+  // Harsh noise burst
+  const bufSize = audioCtx.sampleRate * 0.3;
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for(let i=0;i<bufSize;i++) data[i]=(Math.random()*2-1);
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buf;
+  const noiseGain = audioCtx.createGain();
+  const noiseFilt = audioCtx.createBiquadFilter();
+  noiseFilt.type='bandpass'; noiseFilt.frequency.value=800; noiseFilt.Q.value=0.5;
+  noiseGain.gain.setValueAtTime(0.6, t);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, t+0.3);
+  noise.connect(noiseFilt); noiseFilt.connect(noiseGain); noiseGain.connect(audioCtx.destination);
+  noise.start(t); noise.stop(t+0.3);
+
+  // Descending pitch crash
+  const osc = audioCtx.createOscillator();
+  const oscGain = audioCtx.createGain();
+  osc.type='sawtooth';
+  osc.frequency.setValueAtTime(440, t);
+  osc.frequency.exponentialRampToValueAtTime(40, t+0.4);
+  oscGain.gain.setValueAtTime(0.4, t);
+  oscGain.gain.exponentialRampToValueAtTime(0.001, t+0.4);
+  osc.connect(oscGain); oscGain.connect(audioCtx.destination);
+  osc.start(t); osc.stop(t+0.4);
+
+  // Digital stutter clicks
+  for(let i=0;i<6;i++){
+    const click = audioCtx.createOscillator();
+    const cg = audioCtx.createGain();
+    click.type='square';
+    click.frequency.value = 80 + Math.random()*400;
+    const ct = t + i*0.04 + Math.random()*0.02;
+    cg.gain.setValueAtTime(0.3, ct);
+    cg.gain.exponentialRampToValueAtTime(0.001, ct+0.05);
+    click.connect(cg); cg.connect(audioCtx.destination);
+    click.start(ct); click.stop(ct+0.06);
+  }
+}
+
+// ── Level complete sound ──
+function playLevelSound(){
+  if(!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const CHORD = [261.6, 329.6, 392, 523.2];
+  CHORD.forEach((freq,i)=>{
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type='sine';
+    osc.frequency.value=freq;
+    const st = t + i*0.06;
+    g.gain.setValueAtTime(0, st);
+    g.gain.linearRampToValueAtTime(0.15, st+0.05);
+    g.gain.exponentialRampToValueAtTime(0.001, st+0.6);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(st); osc.stop(st+0.65);
+  });
+}
+
+// ── Jump sound ──
+function playJumpSound(){
+  if(!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type='sine';
+  osc.frequency.setValueAtTime(180, t);
+  osc.frequency.exponentialRampToValueAtTime(360, t+0.12);
+  g.gain.setValueAtTime(0.15, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t+0.15);
+  osc.connect(g); g.connect(audioCtx.destination);
+  osc.start(t); osc.stop(t+0.16);
+}
+
+// ── Glitch ambient tick (random) ──
+function playGlitchTick(){
+  if(!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type='square';
+  osc.frequency.value = 60 + Math.random()*300;
+  g.gain.setValueAtTime(0.08, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t+0.06);
+  osc.connect(g); g.connect(audioCtx.destination);
+  osc.start(t); osc.stop(t+0.07);
+}
+
+setInterval(()=>{
+  if(gameRunning&&!isDead&&Math.random()<.1){
+    glitchT=.06+Math.random()*.1;
+    playGlitchTick();
+  }
+},4000);
 
 lastTS=performance.now();
 requestAnimationFrame(loop);
